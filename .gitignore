@@ -66,5 +66,9 @@ data/
 tmp/
 artifacts/
 
+# Temporary recovery and sandbox paths
+.agent-state/
+.codex/
+
 # Compose local volumes
 compose-data/

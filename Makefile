@@ -6,8 +6,15 @@ SHELL := /usr/bin/env bash
 GO ?= go
 COMPOSE ?= docker compose
 OPENAPI_SPEC ?= api/openapi-outline.yaml
-GO_FILES := $(shell find . -type f -name '*.go' -not -path './.git/*' -not -path './vendor/*' -not -path './bin/*' -not -path './web/node_modules/*' -not -path './web/dist/*')
-GO_PACKAGES := $(shell $(GO) list ./... | grep -v '/web/node_modules/')
+GO_FILES := $(shell find . -type f -name '*.go' \
+	-not -path './.git/*' \
+	-not -path './.agent-state/*' \
+	-not -path './.codex/*' \
+	-not -path './vendor/*' \
+	-not -path './bin/*' \
+	-not -path './web/node_modules/*' \
+	-not -path './web/dist/*')
+GO_PACKAGES := $(shell $(GO) list ./... | grep -vE '(/web/node_modules/|/\.agent-state/|/\.codex/)(|$$)')
 
 .PHONY: help setup fmt format fmt-check lint test build openapi-validate compose-up compose-down compose-app-build compose-app-up integration ci
 
