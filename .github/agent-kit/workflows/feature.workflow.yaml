@@ -1,0 +1,25 @@
+version: 1
+workflow_id: feature
+sequence:
+  - TRIAGE
+  - SCOPE
+  - DECISION_CHECK
+  - DECOMPOSE
+  - LEASE
+  - EXECUTE
+  - HANDOFF
+  - INDEPENDENT_REVIEW
+  - INTEGRATE
+  - AGGREGATE_VERIFY
+  - DONE
+rules:
+  cross_domain:
+    action: split_into_child_tasks
+  missing_decision:
+    action: route_to_planning_authority
+  failed_review:
+    action: return_to_executor
+  failed_aggregate_verification:
+    action: create_repair_task_for_owner
+  orchestrator_repair:
+    allowed: false

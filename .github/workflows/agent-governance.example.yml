@@ -1,0 +1,34 @@
+name: Agent Governance
+
+on:
+  pull_request:
+
+jobs:
+  validate-agent-kit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - run: pip install -r tools/requirements-agent-kit.txt
+
+      - name: Validate canonical agent kit
+        run: python tools/validate_agent_kit.py
+
+      # Enable this block when PR conventions export TASK_ID/LEASE_ID
+      # or derive them through a small repository-specific action.
+      #
+      # - name: Validate task and authority lease
+      #   run: |
+      #     python tools/validate_contract.py task ".agent-state/tasks/${TASK_ID}.yaml"
+      #     python tools/validate_contract.py lease ".agent-state/leases/${LEASE_ID}.yaml"
+      #
+      # - name: Enforce leased file scope
+      #   run: |
+      #     python tools/check_lease_diff.py \
+      #       --lease ".agent-state/leases/${LEASE_ID}.yaml"

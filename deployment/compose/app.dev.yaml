@@ -11,7 +11,10 @@ name: bookdb
 
 services:
   bookdb-api:
-    image: ghcr.io/OWNER/bookdb:dev
+    image: bookdb/bookdb:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: bookdb-api
     depends_on:
       pgbouncer:      {condition: service_healthy}
@@ -44,7 +47,7 @@ services:
     restart: unless-stopped
 
   bookdb-scheduler:
-    image: ghcr.io/OWNER/bookdb:dev
+    image: bookdb/bookdb:dev
     container_name: bookdb-scheduler
     depends_on:
       pgbouncer: {condition: service_healthy}
@@ -60,7 +63,7 @@ services:
     restart: unless-stopped
 
   bookdb-worker-ingest:
-    image: ghcr.io/OWNER/bookdb:dev
+    image: bookdb/bookdb:dev
     container_name: bookdb-worker-ingest
     depends_on:
       pgbouncer: {condition: service_healthy}
@@ -79,7 +82,7 @@ services:
     restart: unless-stopped
 
   bookdb-worker-reconcile:
-    image: ghcr.io/OWNER/bookdb:dev
+    image: bookdb/bookdb:dev
     container_name: bookdb-worker-reconcile
     depends_on:
       pgbouncer: {condition: service_healthy}
@@ -92,7 +95,7 @@ services:
     restart: unless-stopped
 
   bookdb-worker-index:
-    image: ghcr.io/OWNER/bookdb:dev
+    image: bookdb/bookdb:dev
     container_name: bookdb-worker-index
     depends_on:
       pgbouncer:  {condition: service_healthy}

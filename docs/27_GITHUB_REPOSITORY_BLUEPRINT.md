@@ -1,5 +1,9 @@
 # GitHub Repository Blueprint
 
+## M0 CI status
+
+This branch currently ships the agent-governance example workflow only. That workflow validates the canonical agent-kit files and does not yet represent the full product CI matrix.
+
 ## Branch policy
 
 `main` protected:
@@ -19,6 +23,8 @@ Short-lived branches:
 - `chore/<issue>-...`
 
 ## Required checks
+
+The following checks are the target release gate for the repository once the product workflows are in place.
 
 - Go fmt/vet/lint
 - Go unit

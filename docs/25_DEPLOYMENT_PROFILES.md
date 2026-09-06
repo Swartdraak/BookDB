@@ -82,3 +82,10 @@ BookDB provides only application roles; operator provides:
 ## Docker Compose support
 
 BookDB ships Compose for development and standard deployment. Distributed multi-host HA cannot truthfully be guaranteed by a single-host Compose file. The project will provide topology examples and environment contracts for running the same OCI containers under multi-host orchestration or against external HA services.
+
+Current entry points:
+
+- `docker compose up` starts the core foundation services from `compose.yaml`.
+- `docker compose -f compose.yaml -f deployment/compose/app.dev.yaml up` layers in the BookDB application services once a BookDB image exists.
+
+Both variants are development-oriented unless explicitly promoted into a production deployment profile.

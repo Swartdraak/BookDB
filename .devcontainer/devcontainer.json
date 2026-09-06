@@ -1,0 +1,31 @@
+{
+  "name": "BookDB",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "runArgs": ["--init"],
+  "remoteUser": "vscode",
+  "features": {
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.27"
+    },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["golang.Go", "ms-azuretools.vscode-docker"],
+      "settings": {
+        "editor.formatOnSave": true,
+        "files.eol": "\n",
+        "go.toolsManagement.autoUpdate": true,
+        "go.useLanguageServer": true
+      }
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolderBasename}-gocache,target=/home/vscode/.cache/go-build,type=volume",
+    "source=${localWorkspaceFolderBasename}-gomodcache,target=/go/pkg/mod,type=volume"
+  ],
+  "postCreateCommand": "make setup"
+}

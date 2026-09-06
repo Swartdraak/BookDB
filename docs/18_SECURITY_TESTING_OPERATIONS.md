@@ -1,5 +1,14 @@
 # Security, Testing, and Operations
 
+## Current M0 test surface
+
+This branch currently has a narrow executable test surface:
+
+- `go test ./internal/config` covers defaults, environment overrides, validation, and DSN redaction for the typed config package.
+- `.github/workflows/agent-governance.example.yml` validates the agent-kit governance files, not the product runtime.
+
+The broader distributed-system matrix below is the target state for later phases.
+
 ## New mandatory distributed-system tests
 
 - NATS message redelivery/idempotency;
@@ -49,3 +58,7 @@ SSRF, decompression bombs, parser fuzzing, XSS, CSRF, SQL/filter injection, secr
 
 Data-quality incident:
 pause affected pipeline -> preserve evidence -> scope -> fix -> benchmark -> replay canonical projection -> reindex -> verify -> postmortem.
+
+## CI summary
+
+On the M0 foundation branch, product CI is still being assembled. The only committed workflow today is the agent-governance example, so the required checks listed in docs/27 remain the canonical release gate rather than an already-available end-to-end pipeline.

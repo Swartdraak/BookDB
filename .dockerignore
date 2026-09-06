@@ -1,0 +1,10 @@
+.git
+.github
+.devcontainer
+web/node_modules
+web/dist
+**/*.log
+bin
+dist
+.env
+.env.*

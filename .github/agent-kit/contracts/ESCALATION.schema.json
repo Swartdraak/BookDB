@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Escalation",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "task_id",
+    "agent_id",
+    "category",
+    "issue",
+    "decision_needed",
+    "recommended_recipient",
+    "safe_state"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "task_id": {
+      "type": "string"
+    },
+    "agent_id": {
+      "type": "string"
+    },
+    "category": {
+      "enum": [
+        "ARCHITECTURE",
+        "DOMAIN",
+        "SOURCE_LEGAL",
+        "SECURITY",
+        "OWNERSHIP",
+        "QUALITY",
+        "DEPENDENCY",
+        "HUMAN_DECISION"
+      ]
+    },
+    "issue": {
+      "type": "string"
+    },
+    "decision_needed": {
+      "type": "string"
+    },
+    "recommended_recipient": {
+      "type": "string"
+    },
+    "safe_state": {
+      "type": "string"
+    }
+  }
+}

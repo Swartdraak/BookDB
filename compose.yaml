@@ -54,7 +54,7 @@ services:
       # Localhost-only in dev. Do not expose 5432 to 0.0.0.0 in any profile.
       - "127.0.0.1:5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     networks: [bookdb]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bookdb -d bookdb"]
@@ -64,23 +64,20 @@ services:
     restart: unless-stopped
 
   pgbouncer:
-    image: edoburu/pgbouncer:2.7.0
+    image: edoburu/pgbouncer:v1.25.2-p0
     container_name: bookdb-pgbouncer
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      POSTGRESQL_HOST: postgres
-      POSTGRESQL_PORT: 5432
-      POSTGRESQL_USER: bookdb
-      POSTGRESQL_DB: bookdb
-      PGBPOOL_MAX_CLIENT_CONN: 200
-      PGBPOOL_DEFAULT_POOL_SIZE: 20
-      PGBPOOL_AUTH_QUERY: "SELECT usename, passwd FROM pg_catalog.pg_shadow WHERE usename=$1;"
+      DATABASE_URL: postgres://bookdb:bookdb@postgres:5432/bookdb
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
     ports:
-      - "127.0.0.1:6432:6432"
+      - "127.0.0.1:6432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U bookdb"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U bookdb"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -89,7 +86,7 @@ services:
 
   ## --- Durable distributed work/event bus ------------------------------
   nats:
-    image: nats:2.12-alpine3.20
+    image: nats:2.14.6-alpine3.22
     container_name: bookdb-nats
     command: ["-js", "-sd", "/data", "-m", "8222"]
     ports:
@@ -103,7 +100,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
-    restart: never   # dev: keep state visible; JetStream files persist
+    restart: "no"   # dev: keep state visible; JetStream files persist
 
   ## --- Cache / rate limit / ephemeral coordination only -----------------
   valkey:

@@ -1,0 +1,13 @@
+version: 1
+workflow_id: security
+visibility: private_when_vulnerability
+sequence:
+  - TRIAGE
+  - CONTAINMENT_DECISION
+  - SECURITY_PLAN
+  - DELEGATED_REPAIR
+  - SECURITY_REVIEW
+  - QA_REGRESSION
+  - RELEASE_DECISION
+rules:
+  orchestrator_repairs_security_bug: false

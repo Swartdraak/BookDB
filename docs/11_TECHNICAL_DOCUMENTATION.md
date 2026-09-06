@@ -1,37 +1,26 @@
 # Technical Documentation
 
-## Repository target
+## Repository layout
+
+The M0 foundation branch currently centers on:
 
 ```text
-cmd/bookdb/
-internal/
-  api/
-  auth/
-  catalog/
-  claims/
-  proposals/
-  publication/
-  identity/
-  reconcile/
-  scheduler/
-  ingestion/
-  sources/
-  assets/
-  search/
-  events/
-  outbox/
-  audit/
-  observability/
-web/
-migrations/
-api/
-schemas/
-deployment/
+compose.yaml
+deployment/compose/
+config/
+internal/config/
 docs/
-agent-kit/
+adrs/
+.github/
+project-management/
+go.mod
 ```
 
-## Commands
+The runtime trees `cmd/`, `web/`, `migrations/`, and `schemas/` are reserved by the architecture docs, but they are not yet part of this branch.
+
+## Target command surfaces
+
+The architecture docs describe the eventual BookDB process roles and CLI vocabulary, but this branch does not yet ship the `cmd/bookdb` executable tree. Treat the following as the target runtime surface, not as already-implemented commands:
 
 - `bookdb api`
 - `bookdb scheduler`
@@ -53,36 +42,38 @@ agent-kit/
 - `bookdb jobs retry`
 - `bookdb version`
 
-## Baseline toolchain
+## Configuration reference
 
-- Go 1.26+
-- PostgreSQL 18
-- Node LTS compatible with Vite 8
-- pnpm for frontend workspace
-- React 19.2+
-- Vite 8.1+
-- Docker/Compose
-- OpenAPI generator
-- golangci-lint
-- Vitest/Playwright
-- integration tests with real containers
+Configuration precedence is:
 
-## Configuration
+`defaults` < YAML config file < environment variables < secret/runtime references.
 
-Config:
-defaults < YAML config < environment < secret references/runtime.
+The typed config package in `internal/config/` currently exposes these top-level sections:
 
-Secret values are never included in generated diagnostics.
+- `env`
+- `log`
+- `api`
+- `database`
+- `nats`
+- `valkey`
+- `opensearch`
+- `s3`
+- `auth`
+- `sources`
+- `observability`
+- `feature_flags`
 
-## Event schemas
+Development defaults live in code, while `.env.example` and `config/source-registry.example.yaml` provide the local entry points for the root compose stack. Secret values are referenced, not inlined, in production-style configuration.
 
-Every NATS payload is versioned:
-`bookdb.events.<domain>.v1`.
+## Validation
 
-Schema compatibility is tested in CI.
+- `go test ./internal/config` validates the typed config package and its precedence/redaction rules.
+- Secret values are never included in generated diagnostics.
 
-## Migrations
+## Event and migration assumptions
 
-Forward-only after release.
-Large migrations use expand/migrate/contract.
-Reconciliation algorithm changes are versioned separately from database migrations.
+- Every NATS payload is versioned.
+- Schema compatibility is tested in CI once the product workflow lands.
+- Forward-only migrations remain the release norm.
+- Large migrations use expand/migrate/contract.
+- Reconciliation algorithm changes are versioned separately from database migrations.

@@ -12,8 +12,8 @@ change the tag and record the reason in the PR description.
 | Service       | Image                            | Tag         | Notes |
 | ------------- | -------------------------------- | ----------- | ----- |
 | PostgreSQL    | `postgres`                       | `18`        | Canonical store; `bookdb` DB / user. |
-| PgBouncer     | `edoburu/pgbouncer`              | `2.7.0`     | Transaction-mode pooler. |
-| NATS          | `nats`                           | `2.12-alpine3.20` | JetStream enabled; monitoring on 8222 (dev only). |
+| PgBouncer     | `edoburu/pgbouncer`              | `v1.25.2-p0` | Transaction-mode pooler. |
+| NATS          | `nats`                           | `2.14.6-alpine3.22` | JetStream enabled; monitoring on 8222 (dev only). |
 | Valkey        | `valkey/valkey`                  | `9.0`       | Cache / rate-limit / ephemeral coordination. |
 | OpenSearch    | `opensearchproject/opensearch`   | `3.0.0`     | Search projection; security plugin disabled in dev. |
 | SeaweedFS     | `chrislusf/seaweedfs`            | `4.22`      | S3-compatible reference object storage; master/volume/filer/s3. |
