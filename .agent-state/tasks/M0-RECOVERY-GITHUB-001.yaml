@@ -1,0 +1,29 @@
+schema_version: "1.0"
+task_id: M0-RECOVERY-GITHUB-001
+title: Repair governance workflows and CODEOWNERS
+task_type: IMPLEMENTATION
+state: READY_TO_LEASE
+objective: Update GitHub governance files and workflows so they target the recovered canonical tooling layout and enforce the intended CI checks.
+in_scope:
+  - .github/workflows/**
+  - .github/CODEOWNERS
+  - .github/CODEOWNERS.example
+  - .github/dependabot.yml
+out_of_scope:
+  - application code
+  - governance relocation outside GitHub wrappers
+assigned_agent: devops-release
+dependencies:
+  - M0-RECOVERY-GOV-001
+base_commit: c0f14f25ebad3ed0e947f677198ba6cbdc8e898f
+acceptance_criteria:
+  - Agent Governance workflow validates the canonical root tooling layout.
+  - CODEOWNERS uses the repository-appropriate ownership placeholder.
+  - CI covers Go and WebUI checks without suppressing failures.
+verification:
+  - command: github workflow lint or local workflow validation
+    expected: workflow references root tools and exits cleanly
+required_reviewers:
+  - qa-reviewer
+  - security-reviewer
+notes: Governance and CI repair only.

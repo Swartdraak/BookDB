@@ -1,0 +1,87 @@
+name: Agent Governance
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-agent-kit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install agent-kit requirements
+        run: pip install -r tools/requirements-agent-kit.txt
+
+      - name: Validate canonical agent kit
+        run: python tools/validate_agent_kit.py
+
+  validate-task-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install agent-kit requirements
+        run: pip install -r tools/requirements-agent-kit.txt
+
+      - name: Detect task packet and authority lease artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          changed_files="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}")"
+          task_files=""
+          lease_files=""
+
+          while IFS= read -r path; do
+            case "$path" in
+              .agent-state/tasks/*.yaml)
+                task_files="${task_files}${task_files:+ }$path"
+                ;;
+              .agent-state/leases/*.yaml)
+                lease_files="${lease_files}${lease_files:+ }$path"
+                ;;
+            esac
+          done <<< "$changed_files"
+
+          if [[ -n "$task_files" || -n "$lease_files" ]]; then
+            echo "run_checks=true" >> "$GITHUB_OUTPUT"
+            echo "task_files=$task_files" >> "$GITHUB_OUTPUT"
+            echo "lease_files=$lease_files" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_checks=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate task packets
+        if: steps.artifacts.outputs.run_checks == 'true' && steps.artifacts.outputs.task_files != ''
+        shell: bash
+        run: |
+          for file in ${{ steps.artifacts.outputs.task_files }}; do
+            python tools/validate_contract.py task "$file"
+          done
+
+      - name: Validate authority leases
+        if: steps.artifacts.outputs.run_checks == 'true' && steps.artifacts.outputs.lease_files != ''
+        shell: bash
+        run: |
+          for file in ${{ steps.artifacts.outputs.lease_files }}; do
+            python tools/validate_contract.py lease "$file"
+            python tools/check_lease_diff.py --lease "$file" --base "${{ github.event.pull_request.base.sha }}"
+          done

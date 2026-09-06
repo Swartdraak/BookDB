@@ -1,0 +1,31 @@
+schema_version: "1.0"
+lease_id: lease-M0-REPAIR-API-RUNTIME-001-002
+task_id: M0-REPAIR-API-RUNTIME-001
+agent_id: backend-api
+status: ACTIVE
+base_commit: c0f14f25ebad3ed0e947f677198ba6cbdc8e898f
+branch: agent/M0-REPAIR-API-RUNTIME-001
+worktree: /home/swartdraak/Repos/BookDB/.agent-state/worktrees/M0-REPAIR-API-RUNTIME-001
+write_allow:
+  - internal/runtime/**
+  - internal/config/**
+  - internal/health/**
+write_deny:
+  - cmd/**
+  - internal/database/**
+  - web/**
+  - .github/**
+  - docs/**
+allowed_actions:
+  - create
+  - modify
+  - commit
+forbidden_actions:
+  - modify-outside-lease
+  - merge-to-main
+required_reviewers:
+  - qa-reviewer
+  - security-reviewer
+  - api-compat-reviewer
+expires_at: null
+parameters: {}

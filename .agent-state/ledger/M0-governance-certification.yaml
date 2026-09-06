@@ -1,0 +1,131 @@
+schema_version: "1.0"
+objective_id: M0
+entries:
+  - task_id: M0-RECOVERY-ARCH-001
+    agent_id: system-architect
+    state: READY_TO_LEASE
+    lease_id: null
+    branch: null
+    depends_on: []
+    reviews: []
+  - task_id: M0-RECOVERY-GOV-001
+    agent_id: platform-devex
+    state: LEASED
+    lease_id: lease-M0-RECOVERY-GOV-001-001
+    branch: agent/M0-RECOVERY-GOV-001
+    depends_on:
+      - M0-RECOVERY-ARCH-001
+    reviews: []
+  - task_id: M0-RECOVERY-GITHUB-001
+    agent_id: devops-release
+    state: LEASED
+    lease_id: lease-M0-RECOVERY-GITHUB-001-001
+    branch: agent/M0-RECOVERY-GITHUB-001
+    depends_on:
+      - M0-RECOVERY-GOV-001
+    reviews: []
+  - task_id: M0-CERT-DB-001
+    agent_id: database
+    state: READY_TO_LEASE
+    lease_id: null
+    branch: null
+    depends_on:
+      - M0-RECOVERY-GOV-001
+    reviews: []
+  - task_id: M0-CERT-DISTRIBUTED-001
+    agent_id: distributed-systems
+    state: READY_TO_LEASE
+    lease_id: null
+    branch: null
+    depends_on:
+      - M0-RECOVERY-GOV-001
+    reviews: []
+  - task_id: M0-CERT-STORAGE-001
+    agent_id: asset-storage
+    state: READY_TO_LEASE
+    lease_id: null
+    branch: null
+    depends_on:
+      - M0-RECOVERY-GOV-001
+    reviews: []
+  - task_id: M0-CERT-API-RUNTIME-001
+    agent_id: backend-api
+    state: READY_TO_LEASE
+    lease_id: null
+    branch: null
+    depends_on:
+      - M0-RECOVERY-GOV-001
+    reviews: []
+  - task_id: M0-CERT-WEB-001
+    agent_id: frontend
+    state: READY_TO_LEASE
+    lease_id: null
+    branch: null
+    depends_on:
+      - M0-RECOVERY-GOV-001
+    reviews: []
+  - task_id: M0-CERT-PLATFORM-001
+    agent_id: platform-devex
+    state: READY_TO_LEASE
+    lease_id: null
+    branch: null
+    depends_on:
+      - M0-RECOVERY-GOV-001
+    reviews: []
+  - task_id: M0-CERT-SECURITY-001
+    agent_id: security-reviewer
+    state: READY_TO_LEASE
+    lease_id: null
+    branch: null
+    depends_on:
+      - M0-RECOVERY-GOV-001
+    reviews: []
+  - task_id: M0-CERT-DOCS-001
+    agent_id: documentation-reviewer
+    state: READY_TO_LEASE
+    lease_id: null
+    branch: null
+    depends_on:
+      - M0-RECOVERY-GOV-001
+    reviews: []
+  - task_id: M0-REPAIR-API-RUNTIME-001
+    agent_id: backend-api
+    state: LEASED
+    lease_id: lease-M0-REPAIR-API-RUNTIME-001-002
+    branch: agent/M0-REPAIR-API-RUNTIME-001
+    depends_on:
+      - M0-CERT-API-RUNTIME-001
+    reviews:
+      - qa-reviewer
+      - security-reviewer
+      - api-compat-reviewer
+  - task_id: M0-REPAIR-WEB-001
+    agent_id: frontend
+    state: LEASED
+    lease_id: lease-M0-REPAIR-WEB-001-001
+    branch: agent/M0-REPAIR-WEB-001
+    depends_on:
+      - M0-CERT-WEB-001
+    reviews:
+      - qa-reviewer
+      - security-reviewer
+      - documentation-reviewer
+  - task_id: M0-REPAIR-GITHUB-001
+    agent_id: devops-release
+    state: LEASED
+    lease_id: lease-M0-REPAIR-GITHUB-001-002
+    branch: agent/M0-REPAIR-GITHUB-001
+    depends_on:
+      - M0-CERT-SECURITY-001
+    reviews:
+      - qa-reviewer
+      - security-reviewer
+  - task_id: M0-REPAIR-DOCS-001
+    agent_id: documentation-writer
+    state: LEASED
+    lease_id: lease-M0-REPAIR-DOCS-001-002
+    branch: agent/M0-REPAIR-DOCS-001
+    depends_on:
+      - M0-CERT-DOCS-001
+    reviews:
+      - documentation-reviewer
