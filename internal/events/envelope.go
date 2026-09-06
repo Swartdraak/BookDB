@@ -1,4 +1,3 @@
-package events
 // Package events defines BookDB's event-envelope and subject-versioning
 // conventions. It stays intentionally small so messaging code can depend on a
 // stable wire contract without importing business semantics.
