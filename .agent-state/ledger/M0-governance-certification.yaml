@@ -90,7 +90,7 @@ entries:
     reviews: []
   - task_id: M0-REPAIR-API-RUNTIME-001
     agent_id: backend-api
-    state: LEASED
+    state: DONE
     lease_id: lease-M0-REPAIR-API-RUNTIME-001-002
     branch: agent/M0-REPAIR-API-RUNTIME-001
     depends_on:
@@ -101,7 +101,7 @@ entries:
       - api-compat-reviewer
   - task_id: M0-REPAIR-WEB-001
     agent_id: frontend
-    state: LEASED
+    state: DONE
     lease_id: lease-M0-REPAIR-WEB-001-001
     branch: agent/M0-REPAIR-WEB-001
     depends_on:
@@ -112,7 +112,7 @@ entries:
       - documentation-reviewer
   - task_id: M0-REPAIR-GITHUB-001
     agent_id: devops-release
-    state: LEASED
+    state: DONE
     lease_id: lease-M0-REPAIR-GITHUB-001-002
     branch: agent/M0-REPAIR-GITHUB-001
     depends_on:
@@ -122,10 +122,39 @@ entries:
       - security-reviewer
   - task_id: M0-REPAIR-DOCS-001
     agent_id: documentation-writer
-    state: LEASED
+    state: DONE
     lease_id: lease-M0-REPAIR-DOCS-001-002
     branch: agent/M0-REPAIR-DOCS-001
     depends_on:
       - M0-CERT-DOCS-001
     reviews:
       - documentation-reviewer
+  - task_id: M0-REPAIR-EVENTS-001
+    agent_id: distributed-systems
+    state: DONE
+    lease_id: lease-M0-REPAIR-EVENTS-001-001
+    branch: agent/M0-REPAIR-EVENTS-001
+    depends_on:
+      - M0-CERT-DISTRIBUTED-001
+    reviews:
+      - qa-reviewer
+  - task_id: M0-REPAIR-SEARCH-001
+    agent_id: search
+    state: DONE
+    lease_id: lease-M0-REPAIR-SEARCH-001-001
+    branch: agent/M0-REPAIR-SEARCH-001
+    depends_on:
+      - M0-CERT-DISTRIBUTED-001
+    reviews:
+      - qa-reviewer
+  - task_id: M0-REPAIR-PLATFORM-001
+    agent_id: platform-devex
+    state: DONE
+    lease_id: lease-M0-REPAIR-PLATFORM-001-001
+    branch: agent/M0-REPAIR-PLATFORM-001
+    depends_on:
+      - M0-RECOVERY-GOV-001
+    reviews:
+      - qa-reviewer
+      - security-reviewer
+      - devops-release
