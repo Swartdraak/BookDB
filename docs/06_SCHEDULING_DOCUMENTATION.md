@@ -3,9 +3,6 @@
 ## M0 — Repository and licenses
 Monorepo, CI, AGPL server licensing, Apache SDK boundary, Dev Container, conventions.
 
-## M1 — Canonical schema and auth skeleton
-Domain model, claims/provenance, proposals, audit, local/OIDC framework.
-
 ## M2 — Distributed platform
 PostgreSQL 18 baseline/HA contract, NATS JetStream, outbox, Valkey cache, OpenSearch, S3 abstraction.
 
