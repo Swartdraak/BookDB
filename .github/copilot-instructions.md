@@ -1,0 +1,1 @@
+Read `agent-kit/AGENTS.md` before work. Load the relevant specialist agent, skill, and instruction files. Never ingest metadata from user libraries. Never bypass source policy. Preserve provenance and tests.

@@ -1,0 +1,11 @@
+BookDB application/server source code is intended to be licensed under:
+
+GNU Affero General Public License v3.0 or later
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+Before the first source-code release, repository bootstrap MUST include the complete, unmodified official AGPLv3 license text from:
+https://www.gnu.org/licenses/agpl-3.0.txt
+
+This engineering package is a planning artifact and does not substitute this notice for the complete license text in the eventual source repository.
+
+Official client SDKs/API client packages are separately designated Apache-2.0 as documented in `docs/24_LICENSING_POLICY.md`.

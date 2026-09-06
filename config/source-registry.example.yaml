@@ -1,0 +1,59 @@
+sources:
+  - id: openlibrary
+    policy_status: approved_bulk
+    metadata_license: CC0-1.0
+    acquisition_modes: [bulk_dump, recent_changes]
+    raw_retention: true
+    asset_retention: separate_policy
+    reviewed_at: 2026-09-06
+    enabled: true
+    schedule:
+      type: cron
+      expression: "17 3 * * *"
+      timezone: UTC
+      jitter_seconds: 900
+    limits:
+      max_concurrency: 2
+
+  - id: wikidata
+    policy_status: approved_bulk
+    metadata_license: CC0-1.0
+    acquisition_modes: [bulk_dump, api]
+    raw_retention: true
+    asset_retention: separate_policy
+    reviewed_at: 2026-09-06
+    enabled: true
+    schedule:
+      type: cron
+      expression: "47 4 * * 0"
+      timezone: UTC
+      jitter_seconds: 1800
+
+  - id: viaf
+    policy_status: approved_attribution_required
+    metadata_license: ODC-BY
+    acquisition_modes: [api]
+    raw_retention: true
+    attribution_required: true
+    reviewed_at: 2026-09-06
+    enabled: false
+    schedule:
+      type: cron
+      expression: "13 2 * * *"
+      timezone: UTC
+
+  - id: google_books
+    policy_status: query_only_no_persistence
+    metadata_license: provider_terms
+    acquisition_modes: [api]
+    raw_retention: false
+    reviewed_at: 2026-09-06
+    enabled: false
+
+  - id: goodreads
+    policy_status: blocked
+    metadata_license: provider_terms
+    acquisition_modes: []
+    raw_retention: false
+    reviewed_at: 2026-09-06
+    enabled: false

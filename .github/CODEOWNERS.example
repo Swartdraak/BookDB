@@ -1,0 +1,14 @@
+/migrations/ @bookdb/database @bookdb/domain
+/internal/identity/ @bookdb/domain
+/internal/reconcile/ @bookdb/domain
+/internal/claims/ @bookdb/domain
+/internal/sources/ @bookdb/source-governance
+/internal/scheduler/ @bookdb/source-governance @bookdb/platform
+/internal/events/ @bookdb/distributed-systems
+/internal/outbox/ @bookdb/distributed-systems @bookdb/database
+/internal/auth/ @bookdb/security
+/api/ @bookdb/api
+/web/ @bookdb/web
+/deployment/ @bookdb/platform
+/.github/workflows/ @bookdb/platform
+/agent-kit/ @bookdb/agent-governance
