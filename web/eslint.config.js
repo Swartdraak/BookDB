@@ -38,4 +38,11 @@ export default tseslint.config(
       globals: globals.node,
     },
   },
+  {
+    files: ['prettier.config.cjs'],
+    languageOptions: {
+      globals: globals.node,
+      sourceType: 'commonjs',
+    },
+  },
 );
