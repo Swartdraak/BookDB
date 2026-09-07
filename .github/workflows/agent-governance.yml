@@ -100,15 +100,18 @@ jobs:
             python tools/validate_contract.py lease "$file"
           done
 
-      - name: Require current-branch active lease for non-.agent-state changes
+      - name: Require task-bound active lease for non-.agent-state changes
         id: active_branch_leases
         if: steps.artifacts.outputs.non_agent_state_changes == '1'
         env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
           HEAD_BRANCH: ${{ github.head_ref }}
         shell: bash
         run: |
           python - <<'PY'
           import os
+          import subprocess
           import sys
           from pathlib import Path
 
@@ -118,31 +121,72 @@ jobs:
           if not head_branch:
               raise SystemExit("ERROR: cannot determine current PR head branch")
 
-          matches = []
-          for lease_path in sorted(Path(".agent-state/leases").glob("*.yaml")):
+          base_sha = os.environ.get("BASE_SHA", "").strip()
+          head_sha = os.environ.get("HEAD_SHA", "").strip()
+          if not base_sha or not head_sha:
+              raise SystemExit("ERROR: cannot determine PR diff range")
+
+          proc = subprocess.run(
+              ["git", "diff", "--name-only", f"{base_sha}", f"{head_sha}"],
+              capture_output=True,
+              text=True,
+              check=False,
+          )
+          if proc.returncode != 0:
+              print(proc.stderr, file=sys.stderr)
+              raise SystemExit(proc.returncode)
+
+          changed_files = [line.strip().replace("\\", "/") for line in proc.stdout.splitlines() if line.strip()]
+          changed_task_files = [path for path in changed_files if path.startswith(".agent-state/tasks/") and path.endswith(".yaml")]
+          changed_lease_files = [path for path in changed_files if path.startswith(".agent-state/leases/") and path.endswith(".yaml")]
+
+          task_lookup = {}
+          for task_path in changed_task_files:
               try:
-                  payload = yaml.safe_load(lease_path.read_text(encoding="utf-8")) or {}
+                  payload = yaml.safe_load(Path(task_path).read_text(encoding="utf-8")) or {}
+              except Exception as exc:  # pragma: no cover - defensive on malformed YAML
+                  print(f"WARN: skipping unreadable task {task_path}: {exc}")
+                  continue
+              task_id = str(payload.get("task_id", "")).strip()
+              if task_id:
+                  task_lookup[task_id] = task_path
+
+          eligible = []
+          for lease_path in changed_lease_files:
+              try:
+                  payload = yaml.safe_load(Path(lease_path).read_text(encoding="utf-8")) or {}
               except Exception as exc:  # pragma: no cover - defensive on malformed YAML
                   print(f"WARN: skipping unreadable lease {lease_path}: {exc}")
                   continue
+
               if str(payload.get("status", "")).upper() != "ACTIVE":
                   continue
               if str(payload.get("branch", "")).strip() != head_branch:
                   continue
-              matches.append(str(lease_path))
 
-          if not matches:
+              task_id = str(payload.get("task_id", "")).strip()
+              if not task_id:
+                  continue
+
+              task_file = task_lookup.get(task_id)
+              if not task_file:
+                  continue
+
+              eligible.append(lease_path)
+
+          if not eligible:
               print(
-                  f"ERROR: PR contains non-.agent-state changes but no ACTIVE lease for branch '{head_branch}' exists. "
+                  f"ERROR: PR contains non-.agent-state changes but no ACTIVE lease changed in this PR "
+                  f"matches branch '{head_branch}' and a changed task artifact for the same task_id. "
                   "Failing closed."
               )
               sys.exit(1)
 
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
               fh.write("relevant_active_lease_files<<EOF\n")
-              fh.write(" ".join(matches))
+              fh.write(" ".join(eligible))
               fh.write("\nEOF\n")
-          print(f"ACTIVE leases for branch '{head_branch}': {', '.join(matches)}")
+          print(f"Eligible task-bound ACTIVE leases for branch '{head_branch}': {', '.join(eligible)}")
           PY
 
       - name: Validate relevant active leases against their own base...head diff
