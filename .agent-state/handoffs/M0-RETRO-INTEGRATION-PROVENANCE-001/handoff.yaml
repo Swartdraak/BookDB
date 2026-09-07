@@ -10,7 +10,6 @@ changed_files:
 - .devcontainer/Dockerfile
 - .github/CODEOWNERS
 - .github/CODEOWNERS.example
-- .github/workflows/agent-governance.example.yml
 - .github/workflows/agent-governance.yml
 - .github/workflows/ci.yml
 - .github/workflows/security-supply-chain.yml
