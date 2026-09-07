@@ -83,85 +83,91 @@ jobs:
         run: |
           base_sha="${{ github.event.pull_request.base.sha }}"
           head_sha="${{ github.sha }}"
+          changed_files="$(git diff --name-only "${base_sha}" "${head_sha}")"
 
-          for file in ${{ steps.artifacts.outputs.lease_files }}; do
-            python tools/validate_contract.py lease "$file"
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
 
-            python - "$file" "$base_sha" "$head_sha" <<'PY'
-            import subprocess
-            import sys
-            from pathlib import PurePosixPath
+            case "$file" in
+              .agent-state/leases/*.yaml)
+                python tools/validate_contract.py lease "$file"
 
-            import yaml
+                python - "$file" "$base_sha" "$head_sha" <<'PY'
+                import subprocess
+                import sys
+                from pathlib import PurePosixPath
 
-            path, base_sha, head_sha = sys.argv[1], sys.argv[2], sys.argv[3]
+                import yaml
 
-            def read_yaml(text: str):
-                return yaml.safe_load(text) or {}
+                path, base_sha, head_sha = sys.argv[1], sys.argv[2], sys.argv[3]
 
-            def git_show(ref: str, repo_path: str):
-                proc = subprocess.run(
-                    ["git", "show", f"{ref}:{repo_path}"],
+                def read_yaml(text: str):
+                    return yaml.safe_load(text) or {}
+
+                def git_show(ref: str, repo_path: str):
+                    proc = subprocess.run(
+                        ["git", "show", f"{ref}:{repo_path}"],
+                        capture_output=True,
+                        text=True,
+                    )
+                    if proc.returncode != 0:
+                        return None
+                    return proc.stdout
+
+                def matches(path_value: str, pattern: str) -> bool:
+                    if "<" in pattern or ">" in pattern:
+                        return False
+                    p = PurePosixPath(path_value)
+                    return p.match(pattern) or (
+                        pattern.endswith("/**")
+                        and (path_value == pattern[:-3].rstrip("/") or path_value.startswith(pattern[:-3]))
+                    )
+
+                with open(path, "r", encoding="utf-8") as f:
+                    head_lease = read_yaml(f.read())
+
+                head_status = str(head_lease.get("status", "")).upper()
+                if head_status != "ACTIVE":
+                    print(f"ERROR: lease {path} status is {head_status}, expected ACTIVE")
+                    raise SystemExit(1)
+
+                base_text = git_show(base_sha, path)
+                if base_text is not None:
+                    base_lease = read_yaml(base_text)
+                    for field in ("status", "write_allow", "write_deny", "branch"):
+                        if base_lease.get(field) != head_lease.get(field):
+                            print(
+                                f"ERROR: lease {path} changed {field} from "
+                                f"{base_lease.get(field)!r} to {head_lease.get(field)!r}; "
+                                "forbidden without explicit governance approval"
+                            )
+                            raise SystemExit(1)
+
+                changed = subprocess.run(
+                    ["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
                     capture_output=True,
                     text=True,
-                )
-                if proc.returncode != 0:
-                    return None
-                return proc.stdout
+                    check=True,
+                ).stdout.splitlines()
+                changed = [line.strip().replace("\\", "/") for line in changed if line.strip()]
 
-            def matches(path_value: str, pattern: str) -> bool:
-                if "<" in pattern or ">" in pattern:
-                    return False
-                p = PurePosixPath(path_value)
-                return p.match(pattern) or (
-                    pattern.endswith("/**")
-                    and (path_value == pattern[:-3].rstrip("/") or path_value.startswith(pattern[:-3]))
-                )
+                allow = head_lease.get("write_allow", [])
+                deny = head_lease.get("write_deny", [])
+                violations = []
+                for entry in changed:
+                    denied = any(matches(entry, pattern) for pattern in deny)
+                    allowed = any(matches(entry, pattern) for pattern in allow)
+                    if denied or not allowed:
+                        violations.append((entry, "explicitly denied" if denied else "outside write_allow"))
 
-            with open(path, "r", encoding="utf-8") as f:
-                head_lease = read_yaml(f.read())
-
-            head_status = str(head_lease.get("status", "")).upper()
-            if head_status != "ACTIVE":
-                print(f"ERROR: lease {path} status is {head_status}, expected ACTIVE")
-                raise SystemExit(1)
-
-            base_text = git_show(base_sha, path)
-            if base_text is None:
-                effective_lease = head_lease
-            else:
-                base_lease = read_yaml(base_text)
-                base_status = str(base_lease.get("status", "")).upper()
-                if base_status != "ACTIVE":
-                    print(f"ERROR: trusted baseline lease {path} status is {base_status}, expected ACTIVE")
+                if violations:
+                    print(f"LEASE VIOLATIONS for {path}:")
+                    for entry, reason in violations:
+                        print(f"  - {entry}: {reason}")
                     raise SystemExit(1)
-                effective_lease = base_lease
 
-            changed = subprocess.run(
-                ["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout.splitlines()
-            changed = [line.strip().replace("\\", "/") for line in changed if line.strip()]
-
-            allow = effective_lease.get("write_allow", [])
-            deny = effective_lease.get("write_deny", [])
-            relevant = [entry for entry in changed if any(matches(entry, pattern) for pattern in allow)]
-
-            violations = []
-            for entry in relevant:
-                if any(matches(entry, pattern) for pattern in deny):
-                    violations.append((entry, "explicitly denied"))
-                elif not any(matches(entry, pattern) for pattern in allow):
-                    violations.append((entry, "outside write_allow"))
-
-            if violations:
-                print(f"LEASE VIOLATIONS for {path}:")
-                for entry, reason in violations:
-                    print(f"  - {entry}: {reason}")
-                raise SystemExit(1)
-
-            print(f"PASS: {path} scope is valid against trusted baseline lease content.")
-            PY
-          done
+                print(f"PASS: {path} scope is valid against ACTIVE lease policy over the full PR diff.")
+                PY
+                ;;
+            esac
+          done <<< "$changed_files"

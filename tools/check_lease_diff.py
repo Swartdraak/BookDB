@@ -44,6 +44,22 @@ if not base:
     print("ERROR: no base commit")
     sys.exit(2)
 
+base_file = subprocess.run(
+    ["git", "show", f"{base}:{args.lease}"],
+    capture_output=True,
+    text=True,
+)
+if base_file.returncode == 0:
+    base_lease = yaml.safe_load(base_file.stdout) or {}
+    for field in ("status", "write_allow", "write_deny", "branch"):
+        if base_lease.get(field) != lease.get(field):
+            print(
+                f"ERROR: lease {args.lease} changed {field} from "
+                f"{base_lease.get(field)!r} to {lease.get(field)!r}; "
+                "forbidden without explicit governance approval"
+            )
+            sys.exit(1)
+
 proc = subprocess.run(
     ["git","diff","--name-only",f"{base}...{args.head}"],
     capture_output=True, text=True
