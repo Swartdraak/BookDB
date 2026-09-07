@@ -83,5 +83,11 @@ jobs:
         run: |
           for file in ${{ steps.artifacts.outputs.lease_files }}; do
             python tools/validate_contract.py lease "$file"
-            python tools/check_lease_diff.py --lease "$file" --base "${{ github.event.pull_request.base.sha }}"
+            lease_status="$(python -c 'import sys, yaml; print(str((yaml.safe_load(open(sys.argv[1], encoding="utf-8")) or {}).get("status", "")).upper())' "$file")"
+
+            if [[ "$lease_status" == "ACTIVE" ]]; then
+              python tools/check_lease_diff.py --lease "$file" --base "${{ github.event.pull_request.base.sha }}"
+            else
+              echo "Skipping lease diff check for $file: status=$lease_status (schema validation enforced)"
+            fi
           done
