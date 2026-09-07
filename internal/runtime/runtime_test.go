@@ -67,3 +67,58 @@ func TestReadinessReturnsOKForDegradedOptionalDependencies(t *testing.T) {
 		t.Fatalf("expected degraded status, got %q", report.Status)
 	}
 }
+
+func TestAuthModeEndpointReportsHybridAndSanitizedOIDC(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Auth.LocalEnabled = true
+	cfg.Auth.OIDC.Enabled = true
+	cfg.Auth.OIDC.Issuer = "https://issuer.example"
+	cfg.Auth.OIDC.ClientID = "bookdb"
+	cfg.Auth.OIDC.ClientSecret = "super-secret"
+	cfg.Auth.OIDC.Audience = "bookdb-api"
+	cfg.Auth.OIDC.Discovery = true
+
+	server, _, err := newRuntimeServer("api", &cfg, nil)
+	if err != nil {
+		t.Fatalf("newRuntimeServer: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/mode", nil)
+	rec := httptest.NewRecorder()
+	server.Handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 from /auth/mode, got %d", rec.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode auth mode payload: %v", err)
+	}
+	if got, _ := payload["mode"].(string); got != "hybrid" {
+		t.Fatalf("expected hybrid mode, got %q", got)
+	}
+	oidc, ok := payload["oidc"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing oidc payload: %#v", payload)
+	}
+	if _, leaked := oidc["client_secret"]; leaked {
+		t.Fatalf("oidc payload must not expose client_secret: %#v", oidc)
+	}
+}
+
+func TestAuthOIDCEndpointReturns404WhenDisabled(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Auth.OIDC.Enabled = false
+
+	server, _, err := newRuntimeServer("api", &cfg, nil)
+	if err != nil {
+		t.Fatalf("newRuntimeServer: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/oidc", nil)
+	rec := httptest.NewRecorder()
+	server.Handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 from /auth/oidc when disabled, got %d", rec.Code)
+	}
+}

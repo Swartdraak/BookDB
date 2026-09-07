@@ -169,3 +169,38 @@ func TestRedactDSN_Various(t *testing.T) {
 		}
 	}
 }
+
+func TestValidate_AuthRequiresAtLeastOneMode(t *testing.T) {
+	clearEnv(t)
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	cfg.Auth.LocalEnabled = false
+	cfg.Auth.OIDC.Enabled = false
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected validation error when all auth modes are disabled")
+	}
+}
+
+func TestValidate_OIDCRequiresSecretOrRef(t *testing.T) {
+	clearEnv(t)
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	cfg.Auth.LocalEnabled = false
+	cfg.Auth.OIDC.Enabled = true
+	cfg.Auth.OIDC.Issuer = "https://issuer.example"
+	cfg.Auth.OIDC.ClientID = "bookdb"
+	cfg.Auth.OIDC.ClientSecret = ""
+	cfg.Auth.OIDC.ClientSecretRef = ""
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected validation error for missing OIDC secret and secret ref")
+	}
+
+	cfg.Auth.OIDC.ClientSecretRef = "vault://bookdb/oidc-client-secret"
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected OIDC secret ref to satisfy validation: %v", err)
+	}
+}

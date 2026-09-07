@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/bookdb/bookdb/internal/auth"
 )
 
 // Config is the root BookDB configuration.
@@ -325,13 +327,20 @@ func (c *Config) Validate() error {
 	if !strings.HasPrefix(c.NATS.URL, "nats://") && !strings.HasPrefix(c.NATS.URL, "nats+tls://") {
 		return fmt.Errorf("config: NATS URL %q must start with nats://", c.NATS.URL)
 	}
-	if c.Auth.OIDC.Enabled {
-		if c.Auth.OIDC.Issuer == "" {
-			return fmt.Errorf("config: auth.oidc.issuer is required when OIDC is enabled")
-		}
-		if c.Auth.OIDC.ClientID == "" {
-			return fmt.Errorf("config: auth.oidc.client_id is required when OIDC is enabled")
-		}
+
+	if err := auth.ValidateSettings(auth.Settings{
+		LocalEnabled: c.Auth.LocalEnabled,
+		OIDC: auth.OIDCSettings{
+			Enabled:         c.Auth.OIDC.Enabled,
+			Issuer:          c.Auth.OIDC.Issuer,
+			ClientID:        c.Auth.OIDC.ClientID,
+			ClientSecret:    c.Auth.OIDC.ClientSecret,
+			ClientSecretRef: c.Auth.OIDC.ClientSecretRef,
+			Audience:        c.Auth.OIDC.Audience,
+			Discovery:       c.Auth.OIDC.Discovery,
+		},
+	}); err != nil {
+		return err
 	}
 	return nil
 }

@@ -1,0 +1,25 @@
+schema_version: "1.0"
+task_id: M1-DB-001
+agent_id: database
+lease_id: lease-M1-DB-001-001
+result: COMPLETE
+summary: Added canonical schema foundation migration for M1 with core bibliographic and governance tables.
+changed_files:
+  - internal/database/migrations/0002_canonical_schema_foundation.sql
+commits:
+  - 3786bbfc85b6cc2bb1f203e18a26ddf0ccff4d1a
+commands_run:
+  - go test ./internal/database
+verification_results:
+  - check: database tests
+    status: PASS
+    evidence: go test ./internal/database passed
+decisions:
+  - Use UUID primary keys for canonical entities in M1 baseline.
+  - Include governance evidence tables (claims, proposals, audit_log) in the same foundation migration.
+blockers: []
+risks:
+  - Additional constraints and advanced reconciliation projections are deferred to later milestones.
+followups:
+  - Add relation tables for contributor roles and series membership in a subsequent migration.
+

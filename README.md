@@ -15,18 +15,14 @@ This revision incorporates the project owner's confirmed decisions:
 9. Docker Compose remains a supported deployment and development path; true multi-host HA is a separate distributed deployment profile using the same OCI containers.
 10. Development is IDE- and OS-independent.
 
-Current branch status: M0 repository foundation. The accepted ADRs already cover the architecture decisions summarized below, so this refresh is documentation alignment only; no new ADR was required.
+Current branch status: M1 canonical schema and authentication skeleton baseline. The accepted ADRs already cover the architecture decisions summarized below; M1 implementation adds foundational migration and auth runtime surfaces consistent with those decisions.
 
-## M0 foundation at a glance
+## M1 baseline at a glance
 
-- Repository layout currently centers on `compose.yaml`, `deployment/compose/`, `config/`, `internal/config/`, `docs/`, `adrs/`, `.github/`, and `project-management/`.
-- The runtime trees `cmd/`, `web/`, `migrations/`, and `schemas/` are reserved by the architecture docs but are not yet part of this branch.
-- Developer setup starts with Go 1.26+, Docker Compose, `.env.example`, and the root development compose file.
-- Compose support is dev-only: `compose.yaml` starts the core services, and `deployment/compose/app.dev.yaml` layers in BookDB app services once a BookDB image exists.
-- The local app image can be built with `make compose-app-build`, then started with `make compose-app-up` or the equivalent `docker compose -f compose.yaml -f deployment/compose/app.dev.yaml up -d --wait`.
-- Configuration is typed in `internal/config/` with precedence of defaults < YAML file < environment variables < secret/runtime references.
-- Current executable validation is the config package test surface; the broader CI matrix in docs is target-state until the product workflows land.
-- Canonical agent-governance docs live under `.github/README.md` and `.github/AGENT_ORCHESTRATION_MATRIX.md`.
+- Canonical schema migrations now include a foundation for `work`, `expression`, `edition`, `market listing`, and governance evidence tables under `internal/database/migrations/`.
+- Runtime now exposes auth skeleton introspection endpoints (`/auth/mode`, `/auth/oidc`) without exposing secrets.
+- Config validation now enforces M1 auth guardrails: at least one auth mode enabled; OIDC requires issuer, client id, and client secret or secret reference.
+- Compose support remains development-oriented; distributed HA remains a later milestone concern.
 
 ## Final recommended stack
 

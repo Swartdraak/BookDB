@@ -1,0 +1,19 @@
+schema_version: "1.0"
+review_id: review-M1-AUTH-001-SEC-001
+task_id: M1-AUTH-001
+reviewer_agent: security-reviewer
+review_type: SECURITY_REVIEW
+result: APPROVE
+scope:
+  - OIDC config validation
+  - secret exposure risk
+checks:
+  - name: secret surface review
+    status: PASS
+    evidence: Runtime auth endpoints expose no client secret fields.
+  - name: OIDC guardrail review
+    status: PASS
+    evidence: Enabled OIDC requires issuer/client_id and secret or secret_ref.
+findings: []
+notes: Security posture improved for M1 skeleton without weakening existing controls.
+
