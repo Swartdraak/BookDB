@@ -1,6 +1,11 @@
 schema_version: "1.0"
 objective_id: M0
 checkpoints:
+  - id: M0_RECOVERY_REPAIRS_COMPLETE
+    status: COMPLETE
+    branch: fix/m0-governance-certification
+    evidence:
+      - "Governance, security workflow, web provenance normalization, and final web formatting repairs are integrated with independent approvals."
   - id: M0_WEB_PROVENANCE_NORMALIZED
     status: COMPLETE
     branch: fix/m0-governance-certification

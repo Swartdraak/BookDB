@@ -197,3 +197,13 @@ entries:
     reviews:
       - security-reviewer
       - qa-reviewer
+  - task_id: M0-REPAIR-WEB-FORMAT-002
+    agent_id: frontend
+    state: DONE
+    lease_id: lease-M0-REPAIR-WEB-FORMAT-002-001
+    branch: agent/M0-REPAIR-WEB-FORMAT-002
+    depends_on:
+      - M0-REPAIR-WEB-FORMAT-001
+    reviews:
+      - qa-reviewer
+      - security-reviewer
