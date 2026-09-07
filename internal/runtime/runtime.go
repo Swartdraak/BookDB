@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bookdb/bookdb/internal/auth"
 	"github.com/bookdb/bookdb/internal/config"
 	"github.com/bookdb/bookdb/internal/health"
 	"github.com/bookdb/bookdb/internal/logging"
@@ -244,6 +245,19 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		writeMetrics(w, startedAt)
 	})
+	mux.HandleFunc("/auth/mode", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(authModePayload(cfg))
+	})
+	mux.HandleFunc("/auth/oidc", func(w http.ResponseWriter, r *http.Request) {
+		settings := authSettings(cfg)
+		if !settings.OIDC.Enabled {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(auth.PublicOIDC(settings))
+	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
@@ -251,9 +265,10 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"service": name,
-			"version": version.Get(),
-			"status":  "bookdb backend skeleton",
+			"service":   name,
+			"version":   version.Get(),
+			"status":    "bookdb backend skeleton",
+			"auth_mode": auth.ResolveMode(authSettings(cfg)),
 		})
 	})
 
@@ -365,4 +380,27 @@ func writeMetrics(w http.ResponseWriter, startedAt time.Time) {
 	fmt.Fprintln(w, "# HELP bookdb_process_uptime_seconds Process uptime")
 	fmt.Fprintln(w, "# TYPE bookdb_process_uptime_seconds gauge")
 	fmt.Fprintf(w, "bookdb_process_uptime_seconds %.0f\n", time.Since(startedAt).Seconds())
+}
+
+func authSettings(cfg *config.Config) auth.Settings {
+	return auth.Settings{
+		LocalEnabled: cfg.Auth.LocalEnabled,
+		OIDC: auth.OIDCSettings{
+			Enabled:         cfg.Auth.OIDC.Enabled,
+			Issuer:          cfg.Auth.OIDC.Issuer,
+			ClientID:        cfg.Auth.OIDC.ClientID,
+			ClientSecret:    cfg.Auth.OIDC.ClientSecret,
+			ClientSecretRef: cfg.Auth.OIDC.ClientSecretRef,
+			Audience:        cfg.Auth.OIDC.Audience,
+			Discovery:       cfg.Auth.OIDC.Discovery,
+		},
+	}
+}
+
+func authModePayload(cfg *config.Config) map[string]any {
+	settings := authSettings(cfg)
+	return map[string]any{
+		"mode": auth.ResolveMode(settings),
+		"oidc": auth.PublicOIDC(settings),
+	}
 }
