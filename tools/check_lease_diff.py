@@ -50,24 +50,29 @@ base_file = subprocess.run(
     text=True,
 )
 if base_file.returncode == 0:
-        base_lease = yaml.safe_load(base_file.stdout) or {}
-        for field in (
-            "lease_id",
-            "task_id",
-            "agent_id",
-            "status",
-            "write_allow",
-            "write_deny",
-            "branch",
-            "base_commit",
-        ):
-            if base_lease.get(field) != lease.get(field):
-                print(
-                    f"ERROR: lease {args.lease} changed {field} from "
-                    f"{base_lease.get(field)!r} to {lease.get(field)!r}; "
-                    "forbidden without explicit governance approval"
-                )
-                sys.exit(1)
+    base_lease = yaml.safe_load(base_file.stdout) or {}
+    for field in (
+        "lease_id",
+        "task_id",
+        "agent_id",
+        "status",
+        "write_allow",
+        "write_deny",
+        "branch",
+        "base_commit",
+        "worktree",
+        "allowed_actions",
+        "forbidden_actions",
+        "required_reviewers",
+        "expires_at",
+    ):
+        if base_lease.get(field) != lease.get(field):
+            print(
+                f"ERROR: lease {args.lease} changed {field} from "
+                f"{base_lease.get(field)!r} to {lease.get(field)!r}; "
+                "forbidden without explicit governance approval"
+            )
+            sys.exit(1)
 proc = subprocess.run(
     ["git","diff","--name-only",f"{base}...{args.head}"],
     capture_output=True, text=True

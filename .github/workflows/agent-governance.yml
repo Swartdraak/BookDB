@@ -107,9 +107,11 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
           HEAD_BRANCH: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         shell: bash
         run: |
           python - <<'PY'
+          import datetime as dt
           import os
           import subprocess
           import sys
@@ -120,6 +122,13 @@ jobs:
           head_branch = os.environ.get("HEAD_BRANCH", "").strip()
           if not head_branch:
               raise SystemExit("ERROR: cannot determine current PR head branch")
+
+          head_repo = os.environ.get("HEAD_REPO", "").strip()
+          repo_name = os.environ.get("GITHUB_REPOSITORY", "").strip()
+          if head_repo and repo_name and head_repo != repo_name:
+              raise SystemExit(
+                  f"ERROR: PR head repository '{head_repo}' does not match base repository '{repo_name}'"
+              )
 
           base_sha = os.environ.get("BASE_SHA", "").strip()
           head_sha = os.environ.get("HEAD_SHA", "").strip()
@@ -140,6 +149,15 @@ jobs:
           changed_task_files = [path for path in changed_files if path.startswith(".agent-state/tasks/") and path.endswith(".yaml")]
           changed_lease_files = [path for path in changed_files if path.startswith(".agent-state/leases/") and path.endswith(".yaml")]
 
+          active_task_states = {
+              "LEASED",
+              "IN_PROGRESS",
+              "HANDOFF_SUBMITTED",
+              "REVIEW_PENDING",
+              "CHANGES_REQUESTED",
+              "VERIFYING",
+          }
+
           task_lookup = {}
           for task_path in changed_task_files:
               try:
@@ -147,9 +165,16 @@ jobs:
               except Exception as exc:  # pragma: no cover - defensive on malformed YAML
                   print(f"WARN: skipping unreadable task {task_path}: {exc}")
                   continue
+
               task_id = str(payload.get("task_id", "")).strip()
-              if task_id:
-                  task_lookup[task_id] = task_path
+              if not task_id:
+                  continue
+
+              task_lookup[task_id] = {
+                  "path": task_path,
+                  "state": str(payload.get("state", "")).upper(),
+                  "assigned_agent": str(payload.get("assigned_agent", "")).strip(),
+              }
 
           eligible = []
           for lease_path in changed_lease_files:
@@ -164,12 +189,35 @@ jobs:
               if str(payload.get("branch", "")).strip() != head_branch:
                   continue
 
+              lease_base_commit = str(payload.get("base_commit", "")).strip()
+              if lease_base_commit and lease_base_commit != base_sha:
+                  continue
+
+              expires_at = payload.get("expires_at")
+              if expires_at:
+                  try:
+                      expires = dt.datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+                      if expires.tzinfo is None:
+                          expires = expires.replace(tzinfo=dt.timezone.utc)
+                      if expires <= dt.datetime.now(dt.timezone.utc):
+                          continue
+                  except ValueError:
+                      print(f"WARN: malformed expires_at in {lease_path}; skipping")
+                      continue
+
               task_id = str(payload.get("task_id", "")).strip()
               if not task_id:
                   continue
 
-              task_file = task_lookup.get(task_id)
-              if not task_file:
+              task = task_lookup.get(task_id)
+              if not task:
+                  continue
+              if task["state"] not in active_task_states:
+                  continue
+
+              lease_agent = str(payload.get("agent_id", "")).strip()
+              task_agent = task["assigned_agent"]
+              if task_agent and lease_agent and task_agent != lease_agent:
                   continue
 
               eligible.append(lease_path)
@@ -177,8 +225,8 @@ jobs:
           if not eligible:
               print(
                   f"ERROR: PR contains non-.agent-state changes but no ACTIVE lease changed in this PR "
-                  f"matches branch '{head_branch}' and a changed task artifact for the same task_id. "
-                  "Failing closed."
+                  f"matches branch '{head_branch}', the PR base commit, and a changed task artifact "
+                  "in an active execution state. Failing closed."
               )
               sys.exit(1)
 
