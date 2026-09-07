@@ -2,7 +2,7 @@ schema_version: "1.0"
 task_id: M0-REPAIR-DEPENDENCY-REVIEW-002
 title: Handle dependency graph capability unavailability without removing dependency review
 task_type: REPAIR
-state: DONE
+state: VERIFYING
 objective: Keep dependency review in the security workflow while handling repositories where dependency graph capability is unavailable or not exposed to the token.
 in_scope:
   - .github/workflows/security-supply-chain.yml
