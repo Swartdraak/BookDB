@@ -1,0 +1,64 @@
+schema_version: '1.0'
+lease_id: lease-M0-RETRO-STAGEB-PROVENANCE-001-001
+task_id: M0-RETRO-STAGEB-PROVENANCE-001
+agent_id: devops-release
+status: ACTIVE
+base_commit: 09fb0757db5447cd6834da48427c6e11b9a6f865
+branch: feat/m0-repository-foundation
+worktree: /home/swartdraak/Repos/BookDB/.agent-state/worktrees/M0-RETRO-STAGEB-PROVENANCE-001
+write_allow:
+- .codex/**
+- .devcontainer/**
+- .dockerignore
+- .editorconfig
+- .env.example
+- .gitattributes
+- .github/**
+- .gitignore
+- AGENTS.md
+- CLAUDE.md
+- CODE_OF_CONDUCT.md
+- CONTRIBUTING.md
+- DEVELOPMENT_TEAM_HANDOFF.md
+- Dockerfile
+- LICENSE
+- LICENSES/**
+- MANIFEST.md
+- Makefile
+- PROJECT_MANAGER_HANDOFF.md
+- README.md
+- REPOSITORY_BOOTSTRAP_PLAN.md
+- SDK_LICENSE.md
+- SECURITY.md
+- THIRD_PARTY_NOTICES.md
+- adrs/**
+- agent-kit/**
+- api/**
+- compose.yaml
+- config/**
+- deployment/**
+- docs/**
+- examples/**
+- go.mod
+- go.sum
+- internal/**
+- project-management/**
+- prompts/**
+- scripts/**
+- tools/**
+- web/**
+write_deny:
+- .agent-state/**
+allowed_actions:
+- create
+- modify
+- commit
+forbidden_actions:
+- modify-outside-lease
+- merge-to-main
+required_reviewers:
+- qa-reviewer
+- security-reviewer
+expires_at: null
+parameters:
+  target: stageb-retrospective-provenance
