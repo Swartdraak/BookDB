@@ -25,8 +25,4 @@ verification:
 required_reviewers:
   - qa-reviewer
   - security-reviewer
-reviews:
-  - qa-reviewer
-  - security-reviewer
 notes: Governance workflow semantics repair only.
-lease_id: lease-M0-REPAIR-GOVERNANCE-WORKFLOW-002-001

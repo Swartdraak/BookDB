@@ -26,7 +26,4 @@ verification:
 required_reviewers:
   - security-reviewer
   - qa-reviewer
-reviews:
-  - security-reviewer
-  - qa-reviewer
 notes: Track B from the M0 mission. This task responds to the SBOM/image-scan failure in the security supply-chain workflow.

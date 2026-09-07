@@ -25,8 +25,4 @@ verification:
 required_reviewers:
   - security-reviewer
   - qa-reviewer
-reviews:
-  - security-reviewer
-  - qa-reviewer
 notes: This task responds to remote dependency-review capability failure after explicit API enable attempts.
-lease_id: lease-M0-REPAIR-DEPENDENCY-REVIEW-002-001
