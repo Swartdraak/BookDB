@@ -2,7 +2,7 @@ schema_version: '1.0'
 lease_id: lease-M0-RETRO-INTEGRATION-PROVENANCE-001-001
 task_id: M0-RETRO-INTEGRATION-PROVENANCE-001
 agent_id: devops-release
-status: ACTIVE
+status: COMPLETED
 base_commit: c0f14f25ebad3ed0e947f677198ba6cbdc8e898f
 branch: feat/m0-repository-foundation
 worktree: /home/swartdraak/Repos/BookDB/.agent-state/worktrees/M0-RETRO-INTEGRATION-PROVENANCE-001

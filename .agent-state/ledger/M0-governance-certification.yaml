@@ -1,10 +1,10 @@
 schema_version: "1.0"
 objective_id: M0-governance-certification
 repository: Swartdraak/BookDB
-branch: fix/m0-governance-certification
+branch: main
 pull_request:
-  number: 1
-  url: https://github.com/Swartdraak/BookDB/pull/1
+  number: 4
+  url: https://github.com/Swartdraak/BookDB/pull/4
 issue:
   number: 2
   url: https://github.com/Swartdraak/BookDB/issues/2
@@ -29,7 +29,11 @@ entries:
   - item: PR #1
     kind: github-pr
     value: https://github.com/Swartdraak/BookDB/pull/1
-    status: UPDATED
+    status: MERGED
+  - item: PR #4
+    kind: github-pr
+    value: https://github.com/Swartdraak/BookDB/pull/4
+    status: MERGED
   - task_id: M0-RECOVERY-ARCH-001
     agent_id: system-architect
     state: READY_TO_LEASE
@@ -240,7 +244,7 @@ entries:
     agent_id: devops-release
     state: DONE
     lease_id: lease-M0-REPAIR-DEPENDENCY-REVIEW-002-001
-    branch: agent/M0-REPAIR-DEPENDENCY-REVIEW-002
+    branch: feat/m0-repository-foundation
     depends_on:
       - M0-REPAIR-SECURITY-WORKFLOW-001
     reviews:
@@ -252,9 +256,9 @@ entries:
     status: CREATED
   - task_id: M0-REPAIR-DEVCONTAINER-001
     agent_id: devops-release
-    state: LEASED
+    state: DONE
     lease_id: lease-M0-REPAIR-DEVCONTAINER-001-001
-    branch: agent/M0-REPAIR-DEVCONTAINER-001
+    branch: feat/m0-repository-foundation
     depends_on:
       - M0-REPAIR-DEPENDENCY-REVIEW-002
     reviews:
@@ -262,9 +266,9 @@ entries:
       - qa-reviewer
   - task_id: M0-REPAIR-GOVERNANCE-WORKFLOW-002
     agent_id: devops-release
-    state: LEASED
+    state: DONE
     lease_id: lease-M0-REPAIR-GOVERNANCE-WORKFLOW-002-001
-    branch: agent/M0-REPAIR-GOVERNANCE-WORKFLOW-002
+    branch: feat/m0-repository-foundation
     depends_on:
       - M0-REPAIR-GITHUB-GOVERNANCE-001
     reviews:

@@ -2,7 +2,7 @@ schema_version: '1.0'
 task_id: M0-RETRO-STAGEB-PROVENANCE-001
 title: Retrospective provenance coverage for Stage B feat-to-main PR
 task_type: REPAIR
-state: VERIFYING
+state: DONE
 objective: 'Provide explicit provenance coverage for all non-.agent-state files in
   PR #4 (feat/m0-repository-foundation -> main).'
 in_scope:

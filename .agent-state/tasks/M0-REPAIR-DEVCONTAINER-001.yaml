@@ -2,7 +2,7 @@ schema_version: "1.0"
 task_id: M0-REPAIR-DEVCONTAINER-001
 title: Remediate devcontainer image vulnerabilities
 task_type: REPAIR
-state: VERIFYING
+state: DONE
 objective: Reduce or eliminate the Trivy HIGH/CRITICAL findings for the BookDB devcontainer image without weakening the security scan gates.
 in_scope:
   - .devcontainer/Dockerfile
