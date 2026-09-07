@@ -2,7 +2,7 @@ schema_version: "1.0"
 task_id: M0-REPAIR-GOVERNANCE-WORKFLOW-002
 title: Repair authority lease CI validation base semantics
 task_type: REPAIR
-state: VERIFYING
+state: DONE
 objective: Update Agent Governance workflow lease validation to evaluate each lease against its own base_commit context and avoid invalid global diff violations on unrelated files.
 in_scope:
   - .github/workflows/agent-governance.yml

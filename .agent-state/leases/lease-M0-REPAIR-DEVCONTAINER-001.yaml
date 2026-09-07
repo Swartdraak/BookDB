@@ -2,7 +2,7 @@ schema_version: "1.0"
 lease_id: lease-M0-REPAIR-DEVCONTAINER-001-001
 task_id: M0-REPAIR-DEVCONTAINER-001
 agent_id: devops-release
-status: ACTIVE
+status: COMPLETED
 base_commit: e073356c73570e19232fc4d45a7c137e8a1cc835
 branch: feat/m0-repository-foundation
 worktree: /home/swartdraak/Repos/BookDB/.agent-state/worktrees/M0-REPAIR-DEVCONTAINER-001

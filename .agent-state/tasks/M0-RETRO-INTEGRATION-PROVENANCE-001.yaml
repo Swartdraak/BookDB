@@ -2,7 +2,7 @@ schema_version: '1.0'
 task_id: M0-RETRO-INTEGRATION-PROVENANCE-001
 title: Retrospective provenance coverage for integration PR non-agent changes
 task_type: REPAIR
-state: VERIFYING
+state: DONE
 objective: 'Provide explicit task-bound provenance coverage for all non-.agent-state
   files currently present in PR #1 so Agent Governance can validate integration history
   without blind spots.'

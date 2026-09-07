@@ -1,0 +1,21 @@
+schema_version: "1.0"
+objective_id: M1-lifecycle-kickoff
+repository: Swartdraak/BookDB
+branch: feat/m1-lifecycle-kickoff
+state: in_progress
+entries:
+  - item: M1 kickoff objective
+    kind: control-plane-objective
+    value: .agent-state/objectives/M1-lifecycle-kickoff.md
+    status: CREATED
+  - task_id: M1-PLANNING-001
+    agent_id: product-manager
+    state: READY_TO_LEASE
+    lease_id: null
+    branch: null
+    depends_on: []
+    reviews: []
+  - item: M0 completion baseline
+    kind: github-pr
+    value: https://github.com/Swartdraak/BookDB/pull/4
+    status: MERGED

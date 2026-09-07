@@ -2,7 +2,7 @@ schema_version: '1.0'
 lease_id: lease-M0-RETRO-STAGEB-PROVENANCE-001-001
 task_id: M0-RETRO-STAGEB-PROVENANCE-001
 agent_id: devops-release
-status: ACTIVE
+status: COMPLETED
 base_commit: 09fb0757db5447cd6834da48427c6e11b9a6f865
 branch: feat/m0-repository-foundation
 worktree: /home/swartdraak/Repos/BookDB/.agent-state/worktrees/M0-RETRO-STAGEB-PROVENANCE-001
