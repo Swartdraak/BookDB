@@ -1,0 +1,39 @@
+schema_version: "1.1"
+lease_id: lease-M1-GOV-WORKSPACE-MODEL-001-001
+task_id: M1-GOV-WORKSPACE-MODEL-001
+agent_id: platform-devex
+status: ACTIVE
+base_commit: b98ce257cdf3efc8370e0f19e32df83b9041f40a
+branch: fix/agent-workspace-model
+workspace_mode: CANONICAL
+workspace: /home/swartdraak/Repos/BookDB
+write_allow:
+  - .gitignore
+  - agent-kit/**
+  - examples/**
+  - prompts/**
+  - tools/**
+  - .agent-state/**
+write_deny:
+  - cmd/**
+  - internal/**
+  - web/**
+  - migrations/**
+  - deployment/**
+allowed_actions:
+  - create
+  - modify
+  - delete-within-write_allow
+  - run-tests
+  - commit
+forbidden_actions:
+  - modify-outside-lease
+  - merge-to-main
+  - change-product-architecture
+required_reviewers:
+  - qa-reviewer
+  - security-reviewer
+  - documentation-reviewer
+expires_at: null
+parameters: {}
+

@@ -38,7 +38,8 @@ If sub-agent invocation is unavailable, create the complete ordered set of M0 Ta
 If available:
 
 - decompose M0;
-- create isolated task branches/worktrees;
+- default to CANONICAL workspace execution;
+- use ISOLATED external worktrees only for justified concurrent writers;
 - delegate to execution agents;
 - obtain independent reviews;
 - integrate only approved branches;
