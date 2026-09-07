@@ -2,7 +2,7 @@ schema_version: "1.0"
 task_id: M1-PLANNING-001
 title: Define M1 execution backlog and delegated wave plan
 task_type: PLANNING
-state: READY_TO_LEASE
+state: DONE
 objective: Produce a delegated, dependency-ordered M1 execution plan rooted in the post-M0 main baseline and aligned to BookDB agent-kit routing boundaries.
 in_scope:
   - .agent-state/objectives/M1-lifecycle-kickoff.md
@@ -17,7 +17,7 @@ out_of_scope:
   - .github/workflows/**
 assigned_agent: product-manager
 dependencies: []
-base_commit: null
+base_commit: a6d0cab77ef15ac8621e9b831f16d96a646d3c50
 acceptance_criteria:
   - M1 work is decomposed into domain-bounded task packets with no overlapping write ownership.
   - Each generated M1 task includes explicit acceptance criteria and verification commands.
@@ -28,4 +28,4 @@ verification:
 required_reviewers:
   - qa-reviewer
   - system-architect
-notes: This is a control-plane kickoff task for delegated M1 planning, not implementation.
+notes: Completed via decomposition into M1-DB-001, M1-AUTH-001, and M1-DOCS-001.

@@ -1,46 +1,58 @@
 schema_version: "1.0"
 objective_id: M1-lifecycle-kickoff
 repository: Swartdraak/BookDB
-branch: feat/m1-schema-auth-skeleton
-state: in_progress
+branch: main
+state: completed
 entries:
   - item: M1 kickoff objective
     kind: control-plane-objective
     value: .agent-state/objectives/M1-lifecycle-kickoff.md
-    status: CREATED
+    status: COMPLETED
   - task_id: M1-PLANNING-001
     agent_id: product-manager
-    state: IN_PROGRESS
+    state: DONE
     lease_id: null
-    branch: feat/m1-schema-auth-skeleton
+    branch: main
     depends_on: []
-    reviews: []
+    reviews:
+      - qa-reviewer
+      - system-architect
   - task_id: M1-DB-001
     agent_id: database
-    state: IN_PROGRESS
+    state: DONE
     lease_id: lease-M1-DB-001-001
     branch: feat/m1-schema-auth-skeleton
     depends_on:
       - M1-PLANNING-001
-    reviews: []
+    reviews:
+      - qa-reviewer
+      - system-architect
   - task_id: M1-AUTH-001
     agent_id: auth-identity
-    state: IN_PROGRESS
+    state: DONE
     lease_id: lease-M1-AUTH-001-001
     branch: feat/m1-schema-auth-skeleton
     depends_on:
       - M1-PLANNING-001
-    reviews: []
+    reviews:
+      - qa-reviewer
+      - security-reviewer
   - task_id: M1-DOCS-001
     agent_id: documentation-writer
-    state: IN_PROGRESS
+    state: DONE
     lease_id: lease-M1-DOCS-001-001
     branch: feat/m1-schema-auth-skeleton
     depends_on:
       - M1-DB-001
       - M1-AUTH-001
-    reviews: []
-  - item: M0 completion baseline
+    reviews:
+      - documentation-reviewer
+      - qa-reviewer
+  - item: M1 integration PR
     kind: github-pr
-    value: https://github.com/Swartdraak/BookDB/pull/4
+    value: https://github.com/Swartdraak/BookDB/pull/13
     status: MERGED
+  - item: M1 merge commit
+    kind: git-commit
+    value: 87299c8fd7746d3d3d3b4e7dd38cef0ef38559b4
+    status: RECORDED

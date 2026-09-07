@@ -1,19 +1,38 @@
-# M1 Lifecycle Kickoff
+# M1 Lifecycle Kickoff and Certification
 
-Begin M1 immediately after M0 certification on main by creating delegated planning work and explicit acceptance criteria for the first M1 execution wave.
+M1 is completed and certified on `main`.
 
 ## GitHub state
 - Repository: Swartdraak/BookDB
 - Baseline branch: `main`
-- Kickoff branch: `feat/m1-lifecycle-kickoff`
-- Upstream M0 completion PR: https://github.com/Swartdraak/BookDB/pull/4
+- M1 integration branch: `feat/m1-schema-auth-skeleton`
+- M1 integration PR: https://github.com/Swartdraak/BookDB/pull/13
+- M1 merge commit: `87299c8fd7746d3d3d3b4e7dd38cef0ef38559b4`
 
-## Scope
-- Control-plane planning artifacts under `.agent-state`.
-- Delegation-ready M1 task packet(s).
-- No application implementation changes.
+## Implemented M1 scope
+- Canonical schema foundation migration for key bibliographic and governance entities.
+- Authentication skeleton for local/OIDC mode resolution and validation.
+- Runtime-safe auth introspection endpoints.
+- M1 roadmap/documentation alignment.
 
-## Acceptance criteria
-- M0 closure is recorded in `.agent-state` with completed task/lease status for Stage A and Stage B integration repairs.
-- At least one M1 planning task exists in READY_TO_LEASE state with clear in-scope/out-of-scope boundaries.
-- A durable M1 kickoff ledger exists for onward tracking.
+## Certification evidence
+- TaskPackets: `M1-PLANNING-001`, `M1-DB-001`, `M1-AUTH-001`, `M1-DOCS-001`
+- AuthorityLeases (schema 1.1):
+  - `lease-M1-DB-001-001`
+  - `lease-M1-AUTH-001-001`
+  - `lease-M1-DOCS-001-001`
+- Handoffs: `.agent-state/handoffs/M1-*/handoff.yaml`
+- Independent reviews: `.agent-state/reviews/M1-*/`
+- Verification:
+  - `python3 tools/validate_agent_kit.py`
+  - `make fmt-check`
+  - `make lint`
+  - `make test`
+  - `make build`
+  - `make openapi-validate`
+  - `cd web && npm ci --no-audit --no-fund && npm run format && npm run typecheck && npm run lint && npm run test && npm run build`
+  - `docker compose config --quiet`
+
+## Outcome
+- `M1_CERTIFICATION=PASS`
+- Next milestone planning initiated for M2 distributed platform.

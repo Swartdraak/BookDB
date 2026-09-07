@@ -2,7 +2,7 @@ schema_version: "1.0"
 task_id: M1-AUTH-001
 title: Implement authentication skeleton runtime surface
 task_type: IMPLEMENTATION
-state: HANDOFF_SUBMITTED
+state: DONE
 objective: Implement M1 authentication skeleton semantics for local and OIDC modes, including runtime-safe introspection endpoints and config validation.
 in_scope:
   - internal/auth/**
@@ -25,4 +25,4 @@ verification:
 required_reviewers:
   - qa-reviewer
   - security-reviewer
-notes: Implementation completed; handoff submitted for review.
+notes: Implementation, review, CI, and merge completed in PR #13.
