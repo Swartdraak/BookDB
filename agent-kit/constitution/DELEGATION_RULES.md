@@ -63,8 +63,17 @@ A dependent task cannot enter `IN_PROGRESS` until all hard dependencies are `APP
 Parallel tasks require:
 - non-overlapping write leases;
 - common base commit or declared dependency;
-- separate branches/worktrees;
 - integration order.
+
+Separate Git worktrees are NOT required for every task. Writable-path leases provide
+logical ownership boundaries. Tasks whose paths conflict execute sequentially.
+Independent tasks may execute sequentially in the canonical checkout without worktree
+creation.
+
+ISOLATED workspace mode (an external Git worktree) is used only when actual concurrent
+writers, risky experiments, or explicit isolation requirements justify it. All ISOLATED
+worktrees must be outside the canonical repository and removed immediately following
+successful integration. See `WORKSPACE_POLICY.md`.
 
 ## Rule D9 — shared files
 
@@ -86,3 +95,16 @@ If integration causes a semantic conflict:
 - delegate to the owning execution agent with required planning reviewers.
 
 Orchestrator may resolve purely mechanical conflicts only when resulting content is byte-for-byte equivalent to already approved changes.
+
+## Rule D11 — workspace mode
+
+Every AuthorityLease (schema 1.1) declares exactly one `workspace_mode`:
+
+- `CANONICAL` (default): operate in the canonical checkout; no new worktree.
+- `ISOLATED`: external temporary worktree outside the canonical repository, only when
+  genuine concurrency or risky experimentation requires isolation.
+- `READ_ONLY`: planning/review agents that only inspect state; no branch or worktree.
+
+Review and planning agents normally use `READ_ONLY` and do not receive worktrees.
+No Git worktree may be created underneath the canonical repository. See
+`WORKSPACE_POLICY.md`.

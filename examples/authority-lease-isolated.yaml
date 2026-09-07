@@ -1,0 +1,41 @@
+# Example: ISOLATED workspace mode (schema 1.1).
+#
+# Use ISOLATED only when genuine concurrent writers, risky experimentation, or an
+# explicit isolation requirement justify a separate filesystem checkout.
+#
+# The isolated worktree MUST live OUTSIDE the canonical BookDB repository, e.g.
+#   <canonical-parent>/BookDB-worktrees/<TASK-ID>
+# It is temporary: remove it immediately after approved integration, delete the
+# task branch when safe, then run `git worktree prune`.
+schema_version: "1.1"
+lease_id: lease-M1-API-003-001
+task_id: M1-API-003
+agent_id: backend-api
+status: ACTIVE
+base_commit: abcdef1234567890
+branch: agent/M1-API-003
+workspace_mode: ISOLATED
+workspace: /path/to/BookDB-worktrees/M1-API-003
+write_allow:
+  - internal/api/**
+  - api/openapi/**
+write_deny:
+  - migrations/**
+  - web/**
+allowed_actions:
+  - create
+  - modify
+  - delete-within-write_allow
+  - run-tests
+  - commit
+forbidden_actions:
+  - modify-outside-lease
+  - merge-to-main
+  - change-product-architecture
+required_reviewers:
+  - api-compat-reviewer
+  - qa-reviewer
+  - security-reviewer
+expires_at: null
+parameters: {}
+

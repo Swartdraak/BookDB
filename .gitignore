@@ -67,7 +67,16 @@ tmp/
 artifacts/
 
 # Temporary recovery and sandbox paths
-.agent-state/
+# Durable governance state under .agent-state/ (tasks, leases, handoffs, reviews,
+# ledger, objectives, integration, escalations) is tracked normally in Git.
+# Only ephemeral/runtime state is ignored.
+.agent-state/runtime/
+.agent-state/tmp/
+.agent-state/cache/
+.agent-state/logs/
+# Historical nested-worktree path. Git worktrees MUST NOT be created here anymore;
+# ISOLATED worktrees live outside the canonical repository (see WORKSPACE_POLICY.md).
+.agent-state/worktrees/
 .codex/
 
 # Compose local volumes

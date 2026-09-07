@@ -2,97 +2,148 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://bookdb.local/schemas/agent/authority-lease.schema.json",
   "title": "BookDB Agent AuthorityLease",
+  "description": "Versioned AuthorityLease contract. schema_version 1.0 is the legacy worktree-based model (historical M0 audit evidence). schema_version 1.1 is the current workspace-mode model (CANONICAL / ISOLATED / READ_ONLY). Both remain valid; 1.1 is the default for new leases.",
   "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "lease_id",
-    "task_id",
-    "agent_id",
-    "status",
-    "base_commit",
-    "branch",
-    "worktree",
-    "write_allow",
-    "write_deny",
-    "allowed_actions",
-    "forbidden_actions",
-    "required_reviewers"
+  "oneOf": [
+    { "$ref": "#/$defs/lease_1_0" },
+    { "$ref": "#/$defs/lease_1_1" }
   ],
-  "properties": {
-    "schema_version": {
-      "const": "1.0"
-    },
-    "lease_id": {
-      "type": "string"
-    },
-    "task_id": {
-      "type": "string"
-    },
-    "agent_id": {
-      "type": "string"
-    },
-    "status": {
-      "enum": [
-        "ACTIVE",
-        "EXPIRED",
-        "REVOKED",
-        "COMPLETED"
-      ]
-    },
-    "base_commit": {
-      "type": "string",
-      "minLength": 7
-    },
-    "branch": {
-      "type": "string",
-      "minLength": 1
-    },
-    "worktree": {
-      "type": "string",
-      "minLength": 1
-    },
-    "write_allow": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "string"
-      }
-    },
-    "write_deny": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "allowed_actions": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "forbidden_actions": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "string"
-      }
-    },
-    "required_reviewers": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "expires_at": {
-      "type": [
-        "string",
-        "null"
+  "$defs": {
+    "lease_1_0": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "lease_id",
+        "task_id",
+        "agent_id",
+        "status",
+        "base_commit",
+        "branch",
+        "worktree",
+        "write_allow",
+        "write_deny",
+        "allowed_actions",
+        "forbidden_actions",
+        "required_reviewers"
       ],
-      "format": "date-time"
+      "properties": {
+        "schema_version": { "const": "1.0" },
+        "lease_id": { "type": "string" },
+        "task_id": { "type": "string" },
+        "agent_id": { "type": "string" },
+        "status": {
+          "enum": ["ACTIVE", "EXPIRED", "REVOKED", "COMPLETED"]
+        },
+        "base_commit": { "type": "string", "minLength": 7 },
+        "branch": { "type": "string", "minLength": 1 },
+        "worktree": { "type": "string", "minLength": 1 },
+        "write_allow": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "write_deny": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "allowed_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "forbidden_actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "required_reviewers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "expires_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "parameters": { "type": "object" }
+      }
     },
-    "parameters": {
-      "type": "object"
+    "lease_1_1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "lease_id",
+        "task_id",
+        "agent_id",
+        "status",
+        "base_commit",
+        "branch",
+        "workspace_mode",
+        "workspace",
+        "write_allow",
+        "write_deny",
+        "allowed_actions",
+        "forbidden_actions",
+        "required_reviewers"
+      ],
+      "properties": {
+        "schema_version": { "const": "1.1" },
+        "lease_id": { "type": "string" },
+        "task_id": { "type": "string" },
+        "agent_id": { "type": "string" },
+        "status": {
+          "enum": ["ACTIVE", "EXPIRED", "REVOKED", "COMPLETED"]
+        },
+        "base_commit": { "type": "string", "minLength": 7 },
+        "branch": { "type": "string", "minLength": 1 },
+        "workspace_mode": {
+          "enum": ["CANONICAL", "ISOLATED", "READ_ONLY"]
+        },
+        "workspace": { "type": "string", "minLength": 1 },
+        "write_allow": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "write_deny": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "allowed_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "forbidden_actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "required_reviewers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "expires_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "parameters": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "workspace_mode": { "const": "READ_ONLY" } }
+          },
+          "then": {
+            "properties": {
+              "write_allow": { "maxItems": 0 }
+            }
+          },
+          "else": {
+            "properties": {
+              "write_allow": { "minItems": 1 }
+            }
+          }
+        }
+      ]
     }
   }
 }

@@ -1,2 +1,14 @@
 runtime/
+tmp/
+cache/
+logs/
+# Historical nested-worktree path. Git worktrees MUST NOT be created here anymore.
 worktrees/
+
+# Malformed legacy M0 artifacts (pre-schema-conformance). Preserved locally as
+# historical evidence but excluded from tracked governance state because they do
+# not validate against the current TASK_PACKET / HANDOFF schemas.
+tasks/M0-REPAIR-EVENTS-001.yaml
+tasks/M0-REPAIR-PLATFORM-001.yaml
+tasks/M0-REPAIR-SEARCH-001.yaml
+handoffs/M0-REPAIR-WEB-FORMAT-001.handoff.yaml

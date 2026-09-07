@@ -26,7 +26,8 @@ May:
 - inspect Git/GitHub state;
 - create orchestration artifacts;
 - invoke/delegate agents;
-- create branches/worktrees;
+- create branches;
+- create external isolated worktrees (ISOLATED mode only, outside canonical repo);
 - merge/cherry-pick approved task branches;
 - run aggregate verification;
 - report status.

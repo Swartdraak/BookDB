@@ -1,0 +1,31 @@
+# Example: READ_ONLY workspace mode (schema 1.1).
+#
+# Use READ_ONLY for planning, assurance, architecture, security, and documentation
+# reviewers, and any agent that only inspects repository state.
+#
+# No branch or worktree is required merely to review existing content. The
+# workspace is the canonical checkout and no write operations are permitted, so
+# write_allow is empty.
+schema_version: "1.1"
+lease_id: lease-M1-REVIEW-001-001
+task_id: M1-REVIEW-001
+agent_id: security-reviewer
+status: ACTIVE
+base_commit: abcdef1234567890
+branch: feat/m1-platform
+workspace_mode: READ_ONLY
+workspace: /path/to/BookDB
+write_allow: []
+write_deny:
+  - "**"
+allowed_actions:
+  - read
+  - run-tests
+forbidden_actions:
+  - modify-outside-lease
+  - merge-to-main
+  - change-product-architecture
+required_reviewers: []
+expires_at: null
+parameters: {}
+

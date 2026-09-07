@@ -62,6 +62,10 @@ CAN_CREATE_WORKTREES = true | false
 CAN_USE_GITHUB = true | false
 ```
 
+`CAN_CREATE_WORKTREES` means **isolated execution capability is available** — it does
+NOT mean every task should receive a worktree. The default execution mode is CANONICAL
+(no worktree). See `agent-kit/constitution/WORKSPACE_POLICY.md`.
+
 If `CAN_INVOKE_SUBAGENTS=false`:
 
 1. decompose work;
@@ -101,6 +105,17 @@ Create the smallest coherent execution tasks with non-overlapping write paths.
 
 ### 5. LEASE
 Create an AuthorityLease for each executor.
+
+Select `workspace_mode` per `agent-kit/constitution/WORKSPACE_POLICY.md`:
+- `CANONICAL` (default): executor works in the canonical checkout; no new worktree.
+- `ISOLATED`: only when genuine concurrent writers or risky experimentation require
+  isolation; create a temporary external worktree OUTSIDE the canonical repository.
+- `READ_ONLY`: planning/review agents that only inspect state.
+
+Delegate sequentially when using the canonical workspace. Create an external isolated
+worktree only when concurrent execution is beneficial. Never create nested worktrees.
+Clean temporary worktrees and merged task branches automatically. Maintain one active
+milestone/integration branch instead of proliferating branches unnecessarily.
 
 ### 6. DELEGATE
 Invoke the assigned executor or queue the packet.
