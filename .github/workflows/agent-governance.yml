@@ -52,6 +52,7 @@ jobs:
 
           task_files=""
           lease_files=""
+          handoff_files=""
           non_agent_state_changes=0
 
           while IFS= read -r path; do
@@ -72,14 +73,18 @@ jobs:
               .agent-state/leases/*.yaml)
                 lease_files="${lease_files}${lease_files:+ }$path"
                 ;;
+              .agent-state/handoffs/*/handoff.yaml)
+                handoff_files="${handoff_files}${handoff_files:+ }$path"
+                ;;
             esac
           done <<< "$changed_files"
 
           echo "non_agent_state_changes=${non_agent_state_changes}" >> "$GITHUB_OUTPUT"
-          if [[ -n "$task_files" || -n "$lease_files" ]]; then
+          if [[ -n "$task_files" || -n "$lease_files" || -n "$handoff_files" ]]; then
             echo "run_checks=true" >> "$GITHUB_OUTPUT"
             echo "task_files=$task_files" >> "$GITHUB_OUTPUT"
             echo "lease_files=$lease_files" >> "$GITHUB_OUTPUT"
+            echo "handoff_files=$handoff_files" >> "$GITHUB_OUTPUT"
           else
             echo "run_checks=false" >> "$GITHUB_OUTPUT"
           fi
@@ -100,8 +105,15 @@ jobs:
             python tools/validate_contract.py lease "$file"
           done
 
+      - name: Validate changed handoff artifacts
+        if: steps.artifacts.outputs.run_checks == 'true' && steps.artifacts.outputs.handoff_files != ''
+        shell: bash
+        run: |
+          for file in ${{ steps.artifacts.outputs.handoff_files }}; do
+            python tools/validate_contract.py handoff "$file"
+          done
+
       - name: Require task-bound active lease for non-.agent-state changes
-        id: active_branch_leases
         if: steps.artifacts.outputs.non_agent_state_changes == '1'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -115,132 +127,206 @@ jobs:
           import os
           import subprocess
           import sys
-          from pathlib import Path
+          from pathlib import Path, PurePosixPath
 
           import yaml
 
+
+          def matches(path: str, pattern: str) -> bool:
+            if "<" in pattern or ">" in pattern:
+              return False
+
+            candidate = PurePosixPath(path)
+            return candidate.match(pattern) or (
+              pattern.endswith("/**")
+              and (path == pattern[:-3].rstrip("/") or path.startswith(pattern[:-3]))
+            )
+
+
+          def normalize_paths(values):
+            return [str(value).strip().replace("\\", "/") for value in values if str(value).strip()]
+
+
           head_branch = os.environ.get("HEAD_BRANCH", "").strip()
           if not head_branch:
-              raise SystemExit("ERROR: cannot determine current PR head branch")
+            raise SystemExit("ERROR: cannot determine current PR head branch")
 
           head_repo = os.environ.get("HEAD_REPO", "").strip()
           repo_name = os.environ.get("GITHUB_REPOSITORY", "").strip()
           if head_repo and repo_name and head_repo != repo_name:
-              raise SystemExit(
-                  f"ERROR: PR head repository '{head_repo}' does not match base repository '{repo_name}'"
-              )
+            raise SystemExit(
+              f"ERROR: PR head repository '{head_repo}' does not match base repository '{repo_name}'"
+            )
 
           base_sha = os.environ.get("BASE_SHA", "").strip()
           head_sha = os.environ.get("HEAD_SHA", "").strip()
           if not base_sha or not head_sha:
-              raise SystemExit("ERROR: cannot determine PR diff range")
+            raise SystemExit("ERROR: cannot determine PR diff range")
 
           proc = subprocess.run(
-              ["git", "diff", "--name-only", f"{base_sha}", f"{head_sha}"],
-              capture_output=True,
-              text=True,
-              check=False,
+            ["git", "diff", "--name-only", f"{base_sha}", f"{head_sha}"],
+            capture_output=True,
+            text=True,
+            check=False,
           )
           if proc.returncode != 0:
-              print(proc.stderr, file=sys.stderr)
-              raise SystemExit(proc.returncode)
+            print(proc.stderr, file=sys.stderr)
+            raise SystemExit(proc.returncode)
 
           changed_files = [line.strip().replace("\\", "/") for line in proc.stdout.splitlines() if line.strip()]
-          changed_task_files = [path for path in changed_files if path.startswith(".agent-state/tasks/") and path.endswith(".yaml")]
+          pr_changed_files = [path for path in changed_files if not path.startswith(".agent-state/")]
           changed_lease_files = [path for path in changed_files if path.startswith(".agent-state/leases/") and path.endswith(".yaml")]
 
           active_task_states = {
-              "LEASED",
-              "IN_PROGRESS",
-              "HANDOFF_SUBMITTED",
-              "REVIEW_PENDING",
-              "CHANGES_REQUESTED",
-              "VERIFYING",
+            "LEASED",
+            "IN_PROGRESS",
+            "HANDOFF_SUBMITTED",
+            "REVIEW_PENDING",
+            "CHANGES_REQUESTED",
+            "VERIFYING",
           }
 
-          task_lookup = {}
-          for task_path in changed_task_files:
-              try:
-                  payload = yaml.safe_load(Path(task_path).read_text(encoding="utf-8")) or {}
-              except Exception as exc:  # pragma: no cover - defensive on malformed YAML
-                  print(f"WARN: skipping unreadable task {task_path}: {exc}")
-                  continue
+          lease_allow_all = set()
+          checked_leases = []
 
-              task_id = str(payload.get("task_id", "")).strip()
-              if not task_id:
-                  continue
-
-              task_lookup[task_id] = {
-                  "path": task_path,
-                  "state": str(payload.get("state", "")).upper(),
-                  "assigned_agent": str(payload.get("assigned_agent", "")).strip(),
-              }
-
-          eligible = []
           for lease_path in changed_lease_files:
+            try:
+              lease_payload = yaml.safe_load(Path(lease_path).read_text(encoding="utf-8")) or {}
+            except Exception as exc:  # pragma: no cover - defensive on malformed YAML
+              print(f"WARN: skipping unreadable lease {lease_path}: {exc}")
+              continue
+
+            if str(lease_payload.get("status", "")).upper() != "ACTIVE":
+              continue
+            if str(lease_payload.get("branch", "")).strip() != head_branch:
+              continue
+
+            expires_at = lease_payload.get("expires_at")
+            if expires_at:
               try:
-                  payload = yaml.safe_load(Path(lease_path).read_text(encoding="utf-8")) or {}
-              except Exception as exc:  # pragma: no cover - defensive on malformed YAML
-                  print(f"WARN: skipping unreadable lease {lease_path}: {exc}")
+                expires = dt.datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+                if expires.tzinfo is None:
+                  expires = expires.replace(tzinfo=dt.timezone.utc)
+                if expires <= dt.datetime.now(dt.timezone.utc):
                   continue
+              except ValueError:
+                print(f"WARN: malformed expires_at in {lease_path}; skipping")
+                continue
 
-              if str(payload.get("status", "")).upper() != "ACTIVE":
-                  continue
-              if str(payload.get("branch", "")).strip() != head_branch:
-                  continue
+            task_id = str(lease_payload.get("task_id", "")).strip()
+            if not task_id:
+              continue
 
-              lease_base_commit = str(payload.get("base_commit", "")).strip()
-              if lease_base_commit and lease_base_commit != base_sha:
-                  continue
-
-              expires_at = payload.get("expires_at")
-              if expires_at:
-                  try:
-                      expires = dt.datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
-                      if expires.tzinfo is None:
-                          expires = expires.replace(tzinfo=dt.timezone.utc)
-                      if expires <= dt.datetime.now(dt.timezone.utc):
-                          continue
-                  except ValueError:
-                      print(f"WARN: malformed expires_at in {lease_path}; skipping")
-                      continue
-
-              task_id = str(payload.get("task_id", "")).strip()
-              if not task_id:
-                  continue
-
-              task = task_lookup.get(task_id)
-              if not task:
-                  continue
-              if task["state"] not in active_task_states:
-                  continue
-
-              lease_agent = str(payload.get("agent_id", "")).strip()
-              task_agent = task["assigned_agent"]
-              if task_agent and lease_agent and task_agent != lease_agent:
-                  continue
-
-              eligible.append(lease_path)
-
-          if not eligible:
-              print(
-                  f"ERROR: PR contains non-.agent-state changes but no ACTIVE lease changed in this PR "
-                  f"matches branch '{head_branch}', the PR base commit, and a changed task artifact "
-                  "in an active execution state. Failing closed."
-              )
+            task_path = Path(f".agent-state/tasks/{task_id}.yaml")
+            if not task_path.exists():
+              print(f"ERROR: missing task artifact for active lease task {task_id}: {task_path}")
               sys.exit(1)
 
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
-              fh.write("relevant_active_lease_files<<EOF\n")
-              fh.write(" ".join(eligible))
-              fh.write("\nEOF\n")
-          print(f"Eligible task-bound ACTIVE leases for branch '{head_branch}': {', '.join(eligible)}")
-          PY
+            try:
+              task_payload = yaml.safe_load(task_path.read_text(encoding="utf-8")) or {}
+            except Exception as exc:  # pragma: no cover - defensive on malformed YAML
+              print(f"ERROR: unreadable task {task_path}: {exc}")
+              sys.exit(1)
 
-      - name: Validate relevant active leases against their own base...head diff
-        if: steps.artifacts.outputs.non_agent_state_changes == '1'
-        shell: bash
-        run: |
-          for file in ${{ steps.active_branch_leases.outputs.relevant_active_lease_files }}; do
-            python tools/check_lease_diff.py --lease "$file"
-          done
+            if str(task_payload.get("task_id", "")).strip() != task_id:
+              print(f"ERROR: task {task_path} does not match lease task_id {task_id}")
+              sys.exit(1)
+            if str(task_payload.get("state", "")).upper() not in active_task_states:
+              continue
+
+            lease_agent = str(lease_payload.get("agent_id", "")).strip()
+            task_agent = str(task_payload.get("assigned_agent", "")).strip()
+            if task_agent and lease_agent and task_agent != lease_agent:
+              continue
+
+            handoff_path = Path(f".agent-state/handoffs/{task_id}/handoff.yaml")
+            if not handoff_path.exists():
+              print(f"ERROR: missing handoff artifact for active lease task {task_id}: {handoff_path}")
+              sys.exit(1)
+
+            try:
+              handoff_payload = yaml.safe_load(handoff_path.read_text(encoding="utf-8")) or {}
+            except Exception as exc:  # pragma: no cover - defensive on malformed YAML
+              print(f"ERROR: unreadable handoff {handoff_path}: {exc}")
+              sys.exit(1)
+
+            if str(handoff_payload.get("task_id", "")).strip() != task_id:
+              print(f"ERROR: handoff {handoff_path} does not match task {task_id}")
+              sys.exit(1)
+            if str(handoff_payload.get("lease_id", "")).strip() != str(lease_payload.get("lease_id", "")).strip():
+              print(f"ERROR: handoff {handoff_path} does not match lease {lease_payload.get('lease_id', '')}")
+              sys.exit(1)
+            if lease_agent and str(handoff_payload.get("agent_id", "")).strip() != lease_agent:
+              print(f"ERROR: handoff {handoff_path} agent_id does not match lease {lease_path}")
+              sys.exit(1)
+
+            lease_base_commit = str(lease_payload.get("base_commit", "")).strip()
+            if not lease_base_commit:
+              print(f"ERROR: lease {lease_path} has no base_commit")
+              sys.exit(1)
+
+            diff_proc = subprocess.run(
+              ["git", "diff", "--name-only", f"{lease_base_commit}", f"{head_sha}"],
+              capture_output=True,
+              text=True,
+              check=False,
+            )
+            if diff_proc.returncode != 0:
+              print(diff_proc.stderr, file=sys.stderr)
+              raise SystemExit(diff_proc.returncode)
+
+            lease_diff_files = {
+              line.strip().replace("\\", "/")
+              for line in diff_proc.stdout.splitlines()
+              if line.strip()
+            }
+
+            claimed_files = normalize_paths(handoff_payload.get("changed_files", []))
+            claimed_non_agent_files = [path for path in claimed_files if not path.startswith(".agent-state/")]
+
+            lease_allow = list(lease_payload.get("write_allow", []))
+            lease_deny = list(lease_payload.get("write_deny", []))
+
+            for path in claimed_non_agent_files:
+              if path not in lease_diff_files:
+                print(
+                  f"ERROR: handoff {handoff_path} claims '{path}' outside lease base_commit '{lease_base_commit}'"
+                )
+                sys.exit(1)
+
+              denied = any(matches(path, pattern) for pattern in lease_deny)
+              allowed = any(matches(path, pattern) for pattern in lease_allow)
+              if denied or not allowed:
+                reason = "explicitly denied" if denied else "outside write_allow"
+                print(f"ERROR: {path}: {reason} for lease {lease_path}")
+                sys.exit(1)
+
+            lease_allow_all.update(claimed_non_agent_files)
+            checked_leases.append(lease_path)
+
+          if not checked_leases:
+            print(
+              f"ERROR: PR contains non-.agent-state changes but no ACTIVE lease changed in this PR "
+              f"matches branch '{head_branch}' and a changed task artifact in an active execution state. "
+              "Failing closed."
+            )
+            sys.exit(1)
+
+          missing_pr_files = sorted(set(pr_changed_files) - lease_allow_all)
+          if missing_pr_files:
+            print("ERROR: PR contains non-.agent-state changes not covered by any active task handoff:")
+            for path in missing_pr_files:
+              print(f"  - {path}")
+            sys.exit(1)
+
+          extra_claims = sorted(lease_allow_all - set(pr_changed_files))
+          if extra_claims:
+            print("ERROR: active task handoffs claim files not present in the PR diff:")
+            for path in extra_claims:
+              print(f"  - {path}")
+            sys.exit(1)
+
+          print(
+            f"Eligible task-bound ACTIVE leases for branch '{head_branch}': {', '.join(checked_leases)}"
+          )
+          PY

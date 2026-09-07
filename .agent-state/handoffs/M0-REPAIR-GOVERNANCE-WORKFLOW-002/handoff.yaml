@@ -1,0 +1,24 @@
+schema_version: "1.0"
+hand_off_id: handoff-M0-REPAIR-GOVERNANCE-WORKFLOW-002
+status: COMPLETE
+execution_agent: devops-release
+task_id: M0-REPAIR-GOVERNANCE-WORKFLOW-002
+lease_id: lease-M0-REPAIR-GOVERNANCE-WORKFLOW-002-001
+repository_branch: fix/m0-governance-certification
+pr: "#1"
+changed_files:
+  - .github/workflows/agent-governance.yml
+commit_sha: pending
+commit_message: "Repair governance workflow semantics"
+commands_run:
+  - command: python3 -c "from pathlib import Path; import yaml; yaml.safe_load(Path('.github/workflows/agent-governance.yml').read_text(encoding='utf-8')); print('workflow_yaml_ok')"
+    result: "workflow_yaml_ok"
+verification_summary:
+  workflow_yaml: PASS
+  python_parse: PASS
+behavior_change_statement: "The governance workflow is now handoff-aware and validates only files claimed by active task handoffs instead of rejecting unrelated integration PR content."
+merge_status: "NOT MERGED"
+push_status: "PENDING"
+next_phase: "Independent review"
+notes:
+  - The workflow preserves strict task/lease checks and lease expiry handling.

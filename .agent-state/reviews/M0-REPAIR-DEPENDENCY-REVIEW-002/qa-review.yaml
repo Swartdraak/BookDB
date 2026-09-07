@@ -1,0 +1,9 @@
+schema_version: "1.0"
+review_id: review-M0-REPAIR-DEPENDENCY-REVIEW-002-qa
+status: APPROVED
+task_id: M0-REPAIR-DEPENDENCY-REVIEW-002
+lease_id: lease-M0-REPAIR-DEPENDENCY-REVIEW-002-001
+reviewer: qa-reviewer
+summary: Workflow YAML is valid and the task acceptance criteria are met.
+notes:
+  - Approved after local YAML parse and scan verification evidence.

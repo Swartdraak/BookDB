@@ -13,6 +13,7 @@ Current control-plane state:
 - Pull request: https://github.com/Swartdraak/BookDB/pull/1
 - Parent issue: https://github.com/Swartdraak/BookDB/issues/2
 - Milestone: https://github.com/Swartdraak/BookDB/milestones/1
+- Devcontainer remediation issue: https://github.com/Swartdraak/BookDB/issues/3
 
 ## Scope
 - GitHub governance metadata for M0 only.

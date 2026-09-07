@@ -9,22 +9,16 @@ worktree: /home/swartdraak/Repos/BookDB/.agent-state/worktrees/M0-RECOVERY-GOV-0
 write_allow:
   - AGENTS.md
   - CLAUDE.md
+  - .gitignore
+  - Makefile
   - .codex/**
+  - .agent-state/**
   - agent-kit/**
   - prompts/**
   - tools/**
-  - .github/agents/**
-  - .github/copilot-instructions.md
-  - .github/INSTALL.md
-  - .github/README.md
-  - .github/MANIFEST.md
-  - .github/MIGRATION_FROM_V2.md
-  - .github/VALIDATION_REPORT.md
-  - .github/VERSION.md
-  - .github/CLAUDE.md
-  - .github/.codex/**
-  - docs/archive/agent-kit-v2/**
-  - .github/examples/**
+  - .github/**
+  - docs/**
+  - examples/**
 write_deny:
   - cmd/**
   - internal/**

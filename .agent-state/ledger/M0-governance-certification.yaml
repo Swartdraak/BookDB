@@ -246,3 +246,27 @@ entries:
     reviews:
       - security-reviewer
       - qa-reviewer
+  - item: M0 devcontainer remediation issue
+    kind: github-issue
+    value: https://github.com/Swartdraak/BookDB/issues/3
+    status: CREATED
+  - task_id: M0-REPAIR-DEVCONTAINER-001
+    agent_id: devops-release
+    state: LEASED
+    lease_id: lease-M0-REPAIR-DEVCONTAINER-001-001
+    branch: agent/M0-REPAIR-DEVCONTAINER-001
+    depends_on:
+      - M0-REPAIR-DEPENDENCY-REVIEW-002
+    reviews:
+      - security-reviewer
+      - qa-reviewer
+  - task_id: M0-REPAIR-GOVERNANCE-WORKFLOW-002
+    agent_id: devops-release
+    state: LEASED
+    lease_id: lease-M0-REPAIR-GOVERNANCE-WORKFLOW-002-001
+    branch: agent/M0-REPAIR-GOVERNANCE-WORKFLOW-002
+    depends_on:
+      - M0-REPAIR-GITHUB-GOVERNANCE-001
+    reviews:
+      - qa-reviewer
+      - security-reviewer

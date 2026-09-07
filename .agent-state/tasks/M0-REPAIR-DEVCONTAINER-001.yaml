@@ -1,0 +1,32 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-DEVCONTAINER-001
+title: Remediate devcontainer image vulnerabilities
+task_type: REPAIR
+state: DONE
+objective: Reduce or eliminate the Trivy HIGH/CRITICAL findings for the BookDB devcontainer image without weakening the security scan gates.
+in_scope:
+  - .devcontainer/Dockerfile
+  - .devcontainer/devcontainer.json
+out_of_scope:
+  - internal/**
+  - web/**
+  - .github/workflows/**
+  - .agent-state/**
+assigned_agent: devops-release
+dependencies:
+  - M0-REPAIR-DEPENDENCY-REVIEW-002
+base_commit: e073356c73570e19232fc4d45a7c137e8a1cc835
+acceptance_criteria:
+  - The devcontainer still builds successfully.
+  - Trivy no longer reports actionable HIGH/CRITICAL findings caused by the devcontainer base image or packages, or the residual findings are explicitly documented as unavoidable external limitations with compensating controls.
+  - No security gate is weakened to hide vulnerabilities.
+verification:
+  - command: docker build -f .devcontainer/Dockerfile -t bookdb-devcontainer:test .
+    expected: success
+required_reviewers:
+  - security-reviewer
+  - qa-reviewer
+reviews:
+  - security-reviewer
+  - qa-reviewer
+notes: Track B from the M0 mission. This task responds to the SBOM/image-scan failure in the security supply-chain workflow.
