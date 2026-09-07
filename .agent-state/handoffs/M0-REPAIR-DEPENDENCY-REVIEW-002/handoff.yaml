@@ -1,28 +1,30 @@
 schema_version: "1.0"
-hand_off_id: handoff-M0-REPAIR-DEPENDENCY-REVIEW-002
-status: COMPLETE
-execution_agent: devops-release
 task_id: M0-REPAIR-DEPENDENCY-REVIEW-002
+agent_id: devops-release
 lease_id: lease-M0-REPAIR-DEPENDENCY-REVIEW-002-001
-repository_branch: fix/m0-governance-certification
-pr: "#1"
+result: COMPLETE
+summary: Keep dependency review present while handling unavailable GitHub dependency graph capability.
 changed_files:
   - .github/workflows/security-supply-chain.yml
-commit_sha: e073356c73570e19232fc4d45a7c137e8a1cc835
-commit_message: "Record M0 dependency-review remediation"
+commits:
+  - e073356c73570e19232fc4d45a7c137e8a1cc835
 commands_run:
-  - command: cd /home/swartdraak/Repos/BookDB && docker build -f .devcontainer/Dockerfile -t bookdb-devcontainer:test .
-    result: "build succeeded"
-  - command: cd /home/swartdraak/Repos/BookDB && (command -v trivy >/dev/null 2>&1 && trivy image --severity HIGH,CRITICAL --ignore-unfixed bookdb-devcontainer:test) || docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.36.0 image --severity HIGH,CRITICAL --ignore-unfixed bookdb-devcontainer:test
-    result: "post-change Trivy scan returned Total: 0 (HIGH: 0, CRITICAL: 0)"
-verification_summary:
-  build: PASS
-  trivy: PASS
-  diff_check: PASS
-behavior_change_statement: "No security gate was weakened; dependency-review remains present and fail-closed when repository dependency graph access is unavailable."
-merge_status: "NOT MERGED"
-push_status: "PUSHED"
-next_phase: "Awaiting integration of governance workflow semantics"
-notes:
-  - The workflow preserves the dependency-review job while making the capability probe auditable.
-  - The temporary exception path remains explicit via ALLOW_DEPENDENCY_REVIEW_UNAVAILABLE.
+  - cd /home/swartdraak/Repos/BookDB && docker build -f .devcontainer/Dockerfile -t bookdb-devcontainer:test .
+  - cd /home/swartdraak/Repos/BookDB && (command -v trivy >/dev/null 2>&1 && trivy image --severity HIGH,CRITICAL --ignore-unfixed bookdb-devcontainer:test) || docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.36.0 image --severity HIGH,CRITICAL --ignore-unfixed bookdb-devcontainer:test
+verification_results:
+  - check: workflow_yaml
+    status: PASS
+    evidence: workflow parses successfully
+  - check: build
+    status: PASS
+    evidence: devcontainer image builds successfully
+  - check: trivy
+    status: PASS
+    evidence: no actionable HIGH/CRITICAL findings remain
+decisions:
+  - Preserve dependency-review job in fail-closed mode.
+  - Keep explicit temporary exception path for unavailable dependency graph capability.
+blockers: []
+risks:
+  - GitHub dependency graph visibility may remain unavailable on some repositories.
+followups: []
