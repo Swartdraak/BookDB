@@ -1,0 +1,26 @@
+schema_version: "1.0"
+lease_id: lease-M0-REPAIR-INTEGRATION-SECURITY-WORKFLOW-002-001
+task_id: M0-REPAIR-INTEGRATION-SECURITY-WORKFLOW-002
+agent_id: devops-release
+status: ACTIVE
+base_commit: 3d240f336757dd76af14c6aac11c88e3a2d424da
+branch: fix/m0-governance-certification
+worktree: /home/swartdraak/Repos/BookDB
+write_allow:
+  - .github/workflows/security-supply-chain.yml
+write_deny:
+  - internal/**
+  - web/**
+  - docs/**
+  - .agent-state/**
+allowed_actions:
+  - modify
+  - commit
+forbidden_actions:
+  - modify-outside-lease
+  - merge-to-main
+required_reviewers:
+  - security-reviewer
+  - qa-reviewer
+expires_at: null
+parameters: {}

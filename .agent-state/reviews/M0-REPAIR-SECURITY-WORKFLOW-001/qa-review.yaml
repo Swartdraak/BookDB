@@ -1,0 +1,23 @@
+schema_version: "1.0"
+review_id: review-M0-REPAIR-SECURITY-WORKFLOW-001-qa
+task_id: M0-REPAIR-SECURITY-WORKFLOW-001
+reviewer_agent: qa-reviewer
+review_type: QA_REVIEW
+result: APPROVE
+scope:
+  - .agent-state/tasks/M0-REPAIR-SECURITY-WORKFLOW-001.yaml
+  - .agent-state/leases/lease-M0-REPAIR-SECURITY-WORKFLOW-001.yaml
+  - .agent-state/handoffs/M0-REPAIR-SECURITY-WORKFLOW-001/handoff.yaml
+  - .github/workflows/security-supply-chain.yml
+checks:
+  - name: scoped workflow edit
+    status: PASS
+    evidence: "Single-file workflow modification within lease scope."
+  - name: workflow yaml valid
+    status: PASS
+    evidence: "PyYAML parse passed."
+  - name: failure root causes addressed
+    status: PASS
+    evidence: "Dependency-review gating, gitleaks token support, and trivy version pin repaired."
+findings: []
+notes: "QA approved after fail-closed adjustment."

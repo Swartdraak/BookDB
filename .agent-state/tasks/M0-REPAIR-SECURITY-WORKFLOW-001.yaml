@@ -1,0 +1,29 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-SECURITY-WORKFLOW-001
+title: Repair Security Supply Chain workflow
+task_type: REPAIR
+state: READY_TO_LEASE
+objective: Update the Security Supply Chain workflow to use supported GitHub Action releases, valid pull-request secret-scan configuration, and repository-scope least-privilege permissions while preserving required SBOM and vulnerability gates.
+in_scope:
+  - .github/workflows/security-supply-chain.yml
+out_of_scope:
+  - .github/workflows/**
+  - internal/**
+  - web/**
+  - docs/**
+assigned_agent: devops-release
+dependencies:
+  - M0-RECOVERY-GITHUB-001
+base_commit: 175e332a9752960ae2472e2521cf18b54acf5934
+acceptance_criteria:
+  - The workflow uses supported and resolvable Gitleaks and Trivy actions.
+  - The secret scan includes the required GitHub token for pull-request scanning.
+  - The dependency review remains configured only when the repository supports it.
+  - SBOM generation and vulnerability scanning remain active with CRITICAL/HIGH failure thresholds.
+verification:
+  - command: python3 -c "from pathlib import Path; import yaml; yaml.safe_load(Path('.github/workflows/security-supply-chain.yml').read_text(encoding='utf-8')); print('workflow_yaml_ok')"
+    expected: workflow_yaml_ok
+required_reviewers:
+  - security-reviewer
+  - qa-reviewer
+notes: Security workflow repair only.

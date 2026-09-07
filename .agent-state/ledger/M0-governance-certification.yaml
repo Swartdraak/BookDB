@@ -158,3 +158,42 @@ entries:
       - qa-reviewer
       - security-reviewer
       - devops-release
+  - task_id: M0-REPAIR-WEB-FORMAT-001
+    agent_id: frontend
+    state: DONE
+    lease_id: lease-M0-REPAIR-WEB-FORMAT-001-001
+    branch: agent/M0-REPAIR-WEB-FORMAT-001
+    depends_on:
+      - M0-CERT-WEB-001
+    reviews:
+      - qa-reviewer
+  - task_id: M0-REPAIR-GITHUB-GOVERNANCE-001
+    agent_id: devops-release
+    state: DONE
+    lease_id: lease-M0-REPAIR-GITHUB-GOVERNANCE-001-001
+    branch: agent/M0-REPAIR-GITHUB-GOVERNANCE-001
+    depends_on:
+      - M0-RECOVERY-GOV-001
+    reviews:
+      - qa-reviewer
+      - security-reviewer
+  - task_id: M0-REPAIR-SECURITY-WORKFLOW-001
+    agent_id: devops-release
+    state: DONE
+    lease_id: lease-M0-REPAIR-SECURITY-WORKFLOW-001-001
+    branch: agent/M0-REPAIR-SECURITY-WORKFLOW-001
+    depends_on:
+      - M0-RECOVERY-GITHUB-001
+    reviews:
+      - security-reviewer
+      - qa-reviewer
+  - task_id: M0-REPAIR-INTEGRATION-SECURITY-WORKFLOW-002
+    agent_id: devops-release
+    state: DONE
+    lease_id: lease-M0-REPAIR-INTEGRATION-SECURITY-WORKFLOW-002-001
+    branch: fix/m0-governance-certification
+    depends_on:
+      - M0-INTEGRATION-SECURITY-WORKFLOW-001
+    reviews:
+      - security-reviewer
+      - qa-reviewer
