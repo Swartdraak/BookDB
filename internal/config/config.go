@@ -13,6 +13,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -342,11 +343,11 @@ func (c *Config) Sanitized() map[string]any {
 		"env":        c.Env,
 		"log":        map[string]string{"level": c.Log.Level, "format": c.Log.Format},
 		"api":        map[string]any{"addr": c.API.Addr, "read_timeout": c.API.ReadTimeout.String(), "write_timeout": c.API.WriteTimeout.String()},
-		"database":   map[string]any{"dsn": redactDSN(c.Database.DSN), "max_open_conns": c.Database.MaxOpenConns},
-		"nats":       map[string]any{"url": c.NATS.URL, "jetstream": c.NATS.JetStream, "stream": c.NATS.Stream},
-		"valkey":     map[string]any{"url": redactDSN(c.Valkey.URL)},
-		"opensearch": map[string]any{"url": c.OpenSearch.URL, "timeout": c.OpenSearch.Timeout.String()},
-		"s3":         map[string]any{"endpoint": c.S3.Endpoint, "bucket": c.S3.Bucket, "region": c.S3.Region, "force_path_style": c.S3.ForcePathStyle},
+		"database":   map[string]any{"dsn": redactDSN(c.Database.DSN), "dsn_direct": redactDSN(c.Database.DSNDirect), "max_open_conns": c.Database.MaxOpenConns},
+		"nats":       map[string]any{"url": redactURL(c.NATS.URL), "jetstream": c.NATS.JetStream, "stream": c.NATS.Stream},
+		"valkey":     map[string]any{"url": redactURL(c.Valkey.URL)},
+		"opensearch": map[string]any{"url": redactURL(c.OpenSearch.URL), "timeout": c.OpenSearch.Timeout.String()},
+		"s3":         map[string]any{"endpoint": redactURL(c.S3.Endpoint), "bucket": c.S3.Bucket, "region": c.S3.Region, "force_path_style": c.S3.ForcePathStyle},
 		"auth": map[string]any{
 			"local_enabled":  c.Auth.LocalEnabled,
 			"oidc_enabled":   c.Auth.OIDC.Enabled,
@@ -366,16 +367,21 @@ func (c *Config) Sanitized() map[string]any {
 // redactDSN strips the userinfo (user:password@) from a DSN/URL for
 // log-safe display. It never returns the password.
 func redactDSN(dsn string) string {
-	if dsn == "" {
+	return redactURL(dsn)
+}
+
+// redactURL strips userinfo from a URL-like value while preserving the rest of
+// the address for diagnostics.
+func redactURL(raw string) string {
+	if raw == "" {
 		return ""
 	}
-	at := strings.LastIndex(dsn, "@")
-	schemeEnd := strings.Index(dsn, "://")
-	if at > 0 && schemeEnd > -1 && at > schemeEnd {
-		// drop "user:pass@"/"user:pass" portion
-		return dsn[:schemeEnd+3] + "****:" + "**@**" + dsn[at+1:]
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.User == nil {
+		return raw
 	}
-	return dsn
+	parsed.User = url.UserPassword("****", "****")
+	return parsed.String()
 }
 
 func envString(key, def string) string {

@@ -1,4 +1,3 @@
-package opensearch
 // Package opensearch provides the small connectivity and naming foundation
 // BookDB uses for its rebuildable search projection.
 package opensearch

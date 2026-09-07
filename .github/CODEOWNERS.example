@@ -1,3 +1,5 @@
+# Personal repo boundary example for the repository owner.
+* @Swartdraak
 /migrations/ @bookdb/database @bookdb/domain
 /internal/identity/ @bookdb/domain
 /internal/reconcile/ @bookdb/domain

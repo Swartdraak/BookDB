@@ -16,7 +16,9 @@ export function WorkspacePage() {
           <ul className="check-list">
             <li>Run the Vite dev server for iterative UI work.</li>
             <li>Use the test suite for component-level validation.</li>
-            <li>Keep generated client code out of source control until it is explicitly emitted.</li>
+            <li>
+              Keep generated client code out of source control until it is explicitly emitted.
+            </li>
           </ul>
         </article>
 

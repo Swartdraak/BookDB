@@ -1,0 +1,23 @@
+schema_version: "1.0"
+review_id: review-M0-REPAIR-WEB-FORMAT-002-qa
+task_id: M0-REPAIR-WEB-FORMAT-002
+reviewer_agent: qa-reviewer
+review_type: QA_REVIEW
+result: APPROVE
+scope:
+  - .agent-state/tasks/M0-REPAIR-WEB-FORMAT-002.yaml
+  - .agent-state/leases/lease-M0-REPAIR-WEB-FORMAT-002.yaml
+  - .agent-state/handoffs/M0-REPAIR-WEB-FORMAT-002/handoff.yaml
+  - web/**
+checks:
+  - name: scope compliance
+    status: PASS
+    evidence: "All changed files are within web/** lease scope."
+  - name: formatting-only repair
+    status: PASS
+    evidence: "Diff is formatting and newline normalization only."
+  - name: verification chain
+    status: PASS
+    evidence: "format, typecheck, lint, test, and build all passed in task worktree."
+findings: []
+notes: "Approved after commit author metadata normalization to frontend."

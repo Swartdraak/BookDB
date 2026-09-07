@@ -1,0 +1,9 @@
+schema_version: "1.0"
+review_id: review-M0-REPAIR-DEVCONTAINER-001-qa
+status: APPROVED
+task_id: M0-REPAIR-DEVCONTAINER-001
+lease_id: lease-M0-REPAIR-DEVCONTAINER-001-001
+reviewer: qa-reviewer
+summary: Devcontainer build and scan verification are satisfied.
+notes:
+  - Approved after the build and follow-up scan succeeded.

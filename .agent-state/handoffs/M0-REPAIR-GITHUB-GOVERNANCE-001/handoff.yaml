@@ -1,0 +1,29 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-GITHUB-GOVERNANCE-001
+agent_id: devops-release
+lease_id: lease-M0-REPAIR-GITHUB-GOVERNANCE-001-001
+result: COMPLETE
+summary: Removed duplicate active Agent Governance workflow to ensure one canonical governance workflow remains active.
+changed_files:
+  - .github/workflows/agent-governance.example.yml
+commits:
+  - 38a16c133e60143c0a23db038cd9c2cff02b730c
+commands_run:
+  - python3 tools/validate_agent_kit.py
+  - "python3 -c \"from pathlib import Path; import yaml; files = sorted(list(Path('.github/workflows').glob('*.yml')) + list(Path('.github/workflows').glob('*.yaml'))); [yaml.safe_load(f.read_text(encoding='utf-8')) for f in files]; print('workflow_yaml_ok')\""
+verification_results:
+  - check: agent kit validator
+    status: PASS
+    evidence: "Errors: 0, Warnings: 0"
+  - check: workflow yaml parse
+    status: PASS
+    evidence: "workflow_yaml_ok"
+  - check: single active governance workflow
+    status: PASS
+    evidence: "Only .github/workflows/agent-governance.yml remains active for governance."
+decisions:
+  - "Removed only the duplicate executable example workflow and retained the canonical governance workflow."
+blockers: []
+risks:
+  - "Final runtime confirmation requires remote GitHub Actions execution on PR branch."
+followups: []

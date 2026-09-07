@@ -1,0 +1,26 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-WEB-FORMAT-001
+title: Repair WebUI formatting gate
+task_type: REPAIR
+state: READY_TO_LEASE
+objective: Fix the remaining Prettier/formatting failure in the WebUI so the repository CI passes without altering application behavior.
+in_scope:
+  - web/**
+out_of_scope:
+  - internal/**
+  - .github/**
+  - docs/**
+assigned_agent: frontend
+dependencies:
+  - M0-CERT-WEB-001
+base_commit: 175e332a9752960ae2472e2521cf18b54acf5934
+acceptance_criteria:
+  - npm run format passes in the web app.
+  - npm run typecheck, npm run lint, npm run test, and npm run build all pass.
+  - Only formatting changes are introduced in the WebUI.
+verification:
+  - command: cd web && npm run format && npm run typecheck && npm run lint && npm run test && npm run build
+    expected: pass
+required_reviewers:
+  - qa-reviewer
+notes: Formatting-only repair.

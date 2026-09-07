@@ -1,0 +1,9 @@
+schema_version: "1.0"
+review_id: review-M0-REPAIR-GOVERNANCE-WORKFLOW-002-security
+status: APPROVED
+task_id: M0-REPAIR-GOVERNANCE-WORKFLOW-002
+lease_id: lease-M0-REPAIR-GOVERNANCE-WORKFLOW-002-001
+reviewer: security-reviewer
+summary: Governance workflow semantics remain strict while becoming handoff-aware.
+notes:
+  - Approved after checking the updated lease handling and unchanged contract validation.

@@ -38,3 +38,35 @@ jobs:
 
       - name: OpenAPI validation
         run: make openapi-validate
+
+  webui:
+    name: WebUI checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: cd web && npm ci
+
+      - name: Format
+        run: cd web && npm run format
+
+      - name: Typecheck
+        run: cd web && npm run typecheck
+
+      - name: Lint
+        run: cd web && npm run lint
+
+      - name: Test
+        run: cd web && npm run test
+
+      - name: Build
+        run: cd web && npm run build

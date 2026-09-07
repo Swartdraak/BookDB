@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -223,20 +225,21 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 	}
 
 	startedAt := time.Now().UTC()
-	registry := health.NewRegistry()
-	registry.Register("runtime", health.CheckFunc(func(context.Context) health.Status {
+	liveRegistry := health.NewRegistry()
+	liveRegistry.Register("runtime", health.CheckFunc(func(context.Context) health.Status {
 		return health.StatusOK
 	}), true)
+	dependencyRegistry := newDependencyRegistry(cfg)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health/live", func(w http.ResponseWriter, r *http.Request) {
-		writeHealth(w, registry, version.Get().Version, health.StatusOK)
+		writeHealth(w, liveRegistry, version.Get().Version, health.StatusOK)
 	})
 	mux.HandleFunc("/health/ready", func(w http.ResponseWriter, r *http.Request) {
-		writeHealth(w, registry, version.Get().Version, health.StatusOK)
+		writeDependencyHealth(w, dependencyRegistry, version.Get().Version)
 	})
 	mux.HandleFunc("/health/startup", func(w http.ResponseWriter, r *http.Request) {
-		writeHealth(w, registry, version.Get().Version, health.StatusOK)
+		writeDependencyHealth(w, dependencyRegistry, version.Get().Version)
 	})
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		writeMetrics(w, startedAt)
@@ -266,8 +269,86 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 func writeHealth(w http.ResponseWriter, registry *health.Registry, versionString string, status health.Status) {
 	report := registry.Result(context.Background(), versionString)
 	report.Status = string(status)
+	writeHealthReport(w, report)
+}
+
+func writeDependencyHealth(w http.ResponseWriter, registry *health.Registry, versionString string) {
+	report := registry.Result(context.Background(), versionString)
+	writeHealthReport(w, report)
+}
+
+func newDependencyRegistry(cfg *config.Config) *health.Registry {
+	registry := health.NewRegistry()
+	registry.Register("database", health.CheckFunc(func(ctx context.Context) health.Status {
+		return probeEndpoint(ctx, cfg.Database.DSN, "5432")
+	}), true)
+	registry.Register("nats", health.CheckFunc(func(ctx context.Context) health.Status {
+		return probeEndpoint(ctx, cfg.NATS.URL, "4222")
+	}), false)
+	registry.Register("valkey", health.CheckFunc(func(ctx context.Context) health.Status {
+		return probeEndpoint(ctx, cfg.Valkey.URL, "6379")
+	}), false)
+	registry.Register("opensearch", health.CheckFunc(func(ctx context.Context) health.Status {
+		return probeEndpoint(ctx, cfg.OpenSearch.URL, "9200")
+	}), false)
+	registry.Register("s3", health.CheckFunc(func(ctx context.Context) health.Status {
+		return probeEndpoint(ctx, cfg.S3.Endpoint, "8333")
+	}), false)
+	return registry
+}
+
+func probeEndpoint(ctx context.Context, raw, defaultPort string) health.Status {
+	address, err := normalizeEndpoint(raw, defaultPort)
+	if err != nil {
+		return health.StatusDown
+	}
+	dialer := net.Dialer{Timeout: 2 * time.Second}
+	conn, err := dialer.DialContext(ctx, "tcp", address)
+	if err != nil {
+		return health.StatusDown
+	}
+	_ = conn.Close()
+	return health.StatusOK
+}
+
+func normalizeEndpoint(raw, defaultPort string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", fmt.Errorf("empty endpoint")
+	}
+	if strings.Contains(raw, "://") {
+		parsed, err := url.Parse(raw)
+		if err != nil {
+			return "", err
+		}
+		host := parsed.Hostname()
+		if host == "" {
+			return "", fmt.Errorf("missing host")
+		}
+		port := parsed.Port()
+		if port == "" {
+			port = defaultPort
+		}
+		if port == "" {
+			return "", fmt.Errorf("missing port")
+		}
+		return net.JoinHostPort(host, port), nil
+	}
+	if host, port, err := net.SplitHostPort(raw); err == nil {
+		if host == "" {
+			return "", fmt.Errorf("missing host")
+		}
+		return net.JoinHostPort(host, port), nil
+	}
+	if defaultPort == "" {
+		return "", fmt.Errorf("missing port")
+	}
+	return net.JoinHostPort(raw, defaultPort), nil
+}
+
+func writeHealthReport(w http.ResponseWriter, report health.Result) {
 	w.Header().Set("Content-Type", "application/json")
-	if status == health.StatusOK {
+	if health.Status(report.Status) != health.StatusDown {
 		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusServiceUnavailable)

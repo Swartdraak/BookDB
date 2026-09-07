@@ -1,0 +1,25 @@
+schema_version: "1.0"
+task_id: M0-CERT-DISTRIBUTED-001
+title: Certify distributed foundations
+task_type: REVIEW_SUPPORT
+state: READY_TO_LEASE
+objective: Independently review the NATS event envelope, JetStream foundation, and distributed safety boundaries for M0 correctness.
+in_scope:
+  - internal/events/**
+  - internal/messaging/nats/**
+out_of_scope:
+  - repair of defects
+  - business-domain event semantics
+assigned_agent: distributed-systems
+dependencies:
+  - M0-RECOVERY-GOV-001
+base_commit: c0f14f25ebad3ed0e947f677198ba6cbdc8e898f
+acceptance_criteria:
+  - Event envelope versioning is validated.
+  - At-least-once and redelivery assumptions are preserved.
+  - No domain semantics are prematurely embedded.
+verification:
+  - command: review repository state and tests
+    expected: review report written
+required_reviewers:
+  - qa-reviewer

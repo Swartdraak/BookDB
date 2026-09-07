@@ -1,0 +1,23 @@
+schema_version: "1.0"
+review_id: review-M0-REPAIR-INTEGRATION-SECURITY-WORKFLOW-002-qa
+task_id: M0-REPAIR-INTEGRATION-SECURITY-WORKFLOW-002
+reviewer_agent: qa-reviewer
+review_type: QA_REVIEW
+result: APPROVE
+scope:
+  - .agent-state/tasks/M0-REPAIR-INTEGRATION-SECURITY-WORKFLOW-002.yaml
+  - .agent-state/leases/lease-M0-REPAIR-INTEGRATION-SECURITY-WORKFLOW-002.yaml
+  - .agent-state/handoffs/M0-REPAIR-INTEGRATION-SECURITY-WORKFLOW-002/handoff.yaml
+  - .github/workflows/security-supply-chain.yml
+checks:
+  - name: scope compliance
+    status: PASS
+    evidence: "Only security-supply-chain workflow file changed."
+  - name: yaml validity
+    status: PASS
+    evidence: "Workflow YAML parses successfully."
+  - name: approved parity restoration
+    status: PASS
+    evidence: "Workflow content matches approved baseline behavior."
+findings: []
+notes: "QA approved parity restoration on integration branch."

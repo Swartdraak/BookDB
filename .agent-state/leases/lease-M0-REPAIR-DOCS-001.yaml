@@ -1,0 +1,27 @@
+schema_version: "1.0"
+lease_id: lease-M0-REPAIR-DOCS-001-002
+task_id: M0-REPAIR-DOCS-001
+agent_id: documentation-writer
+status: ACTIVE
+base_commit: c0f14f25ebad3ed0e947f677198ba6cbdc8e898f
+branch: agent/M0-REPAIR-DOCS-001
+worktree: /home/swartdraak/Repos/BookDB/.agent-state/worktrees/M0-REPAIR-DOCS-001
+write_allow:
+  - README.md
+  - docs/**
+  - project-management/**
+write_deny:
+  - internal/**
+  - web/**
+  - .github/**
+allowed_actions:
+  - create
+  - modify
+  - commit
+forbidden_actions:
+  - modify-outside-lease
+  - merge-to-main
+required_reviewers:
+  - documentation-reviewer
+expires_at: null
+parameters: {}

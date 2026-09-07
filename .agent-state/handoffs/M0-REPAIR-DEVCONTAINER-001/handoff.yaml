@@ -1,0 +1,27 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-DEVCONTAINER-001
+agent_id: devops-release
+lease_id: lease-M0-REPAIR-DEVCONTAINER-001-001
+result: COMPLETE
+summary: Refresh the devcontainer base packages to eliminate actionable Trivy HIGH/CRITICAL findings.
+changed_files:
+  - .devcontainer/Dockerfile
+commits:
+  - ce6ac30289bb6041b82254dc875498a28b95a7d1
+commands_run:
+  - cd /home/swartdraak/Repos/BookDB && docker build -f .devcontainer/Dockerfile -t bookdb-devcontainer:test .
+  - cd /home/swartdraak/Repos/BookDB && (command -v trivy >/dev/null 2>&1 && trivy image --severity HIGH,CRITICAL --ignore-unfixed bookdb-devcontainer:test) || docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.36.0 image --severity HIGH,CRITICAL --ignore-unfixed bookdb-devcontainer:test
+verification_results:
+  - check: build
+    status: PASS
+    evidence: devcontainer image builds successfully
+  - check: trivy
+    status: PASS
+    evidence: "local Trivy scan returned Total: 0 (HIGH: 0, CRITICAL: 0)"
+decisions:
+  - Refresh Ubuntu packages during image build.
+  - Keep the scan thresholds unchanged.
+blockers: []
+risks:
+  - Upstream base-image vulnerabilities may reappear on future rebuilds.
+followups: []

@@ -1,0 +1,29 @@
+schema_version: "1.0"
+lease_id: lease-M0-REPAIR-DEVCONTAINER-001-001
+task_id: M0-REPAIR-DEVCONTAINER-001
+agent_id: devops-release
+status: ACTIVE
+base_commit: e073356c73570e19232fc4d45a7c137e8a1cc835
+branch: fix/m0-governance-certification
+worktree: /home/swartdraak/Repos/BookDB/.agent-state/worktrees/M0-REPAIR-DEVCONTAINER-001
+write_allow:
+  - .devcontainer/Dockerfile
+  - .devcontainer/devcontainer.json
+write_deny:
+  - internal/**
+  - web/**
+  - .github/**
+  - .agent-state/**
+allowed_actions:
+  - create
+  - modify
+  - commit
+forbidden_actions:
+  - modify-outside-lease
+  - merge-to-main
+required_reviewers:
+  - security-reviewer
+  - qa-reviewer
+expires_at: null
+parameters:
+  scan_failure: sbom-and-image-scan

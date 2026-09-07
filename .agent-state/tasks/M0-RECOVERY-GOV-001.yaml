@@ -1,0 +1,38 @@
+schema_version: "1.0"
+task_id: M0-RECOVERY-GOV-001
+title: Restore canonical Agent Kit v3 layout
+task_type: IMPLEMENTATION
+state: READY_TO_LEASE
+objective: Restore the root-level Agent Kit v3 installation layout and move obsolete active v2 governance artifacts into archive locations without changing application behavior.
+in_scope:
+  - AGENTS.md
+  - CLAUDE.md
+  - .codex/**
+  - agent-kit/**
+  - prompts/**
+  - tools/**
+  - .github/agents/**
+  - .github/copilot-instructions.md
+  - archive move of obsolete v2 governance artifacts
+out_of_scope:
+  - cmd/**
+  - internal/**
+  - web/**
+  - migrations/**
+  - application CI changes
+assigned_agent: platform-devex
+dependencies:
+  - M0-RECOVERY-ARCH-001
+base_commit: c0f14f25ebad3ed0e947f677198ba6cbdc8e898f
+acceptance_criteria:
+  - The canonical active Agent Kit exists at the root-level layout described by the installation specification.
+  - GitHub-specific wrappers resolve to the root canonical paths.
+  - There is exactly one active governance system.
+  - The Agent Kit validator passes.
+verification:
+  - command: python tools/validate_agent_kit.py
+    expected: "Errors: 0, Warnings: 0"
+required_reviewers:
+  - documentation-reviewer
+  - qa-reviewer
+notes: Mechanical relocation and conflict cleanup only.

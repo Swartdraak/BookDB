@@ -120,6 +120,35 @@ func TestSanitized_RedactsDSN(t *testing.T) {
 	}
 }
 
+func TestSanitized_RedactsServiceURLs(t *testing.T) {
+	clearEnv(t)
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	cfg.Database.DSN = "postgres://bookdb:supersecretpass@127.0.0.1:5432/bookdb?sslmode=disable"
+	cfg.Database.DSNDirect = "postgres://bookdb:directsecret@127.0.0.1:5432/bookdb?sslmode=disable"
+	cfg.NATS.URL = "nats://bookdb:natssecret@127.0.0.1:4222"
+	cfg.Valkey.URL = "redis://bookdb:valkeysecret@127.0.0.1:6379/0"
+	cfg.OpenSearch.URL = "http://bookdb:searchsecret@127.0.0.1:9200"
+	cfg.S3.Endpoint = "http://bookdb:s3secret@127.0.0.1:8333"
+
+	s := cfg.Sanitized()
+	checks := map[string]string{
+		"database.dsn":        s["database"].(map[string]any)["dsn"].(string),
+		"database.dsn_direct": s["database"].(map[string]any)["dsn_direct"].(string),
+		"nats.url":            s["nats"].(map[string]any)["url"].(string),
+		"valkey.url":          s["valkey"].(map[string]any)["url"].(string),
+		"opensearch.url":      s["opensearch"].(map[string]any)["url"].(string),
+		"s3.endpoint":         s["s3"].(map[string]any)["endpoint"].(string),
+	}
+	for name, got := range checks {
+		if strings.Contains(got, "supersecretpass") || strings.Contains(got, "directsecret") || strings.Contains(got, "natssecret") || strings.Contains(got, "valkeysecret") || strings.Contains(got, "searchsecret") || strings.Contains(got, "s3secret") {
+			t.Fatalf("%s leaks credentials: %q", name, got)
+		}
+	}
+}
+
 func TestRedactDSN_Various(t *testing.T) {
 	cases := map[string]struct {
 		dsn            string

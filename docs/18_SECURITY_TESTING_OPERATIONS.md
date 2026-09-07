@@ -61,4 +61,4 @@ pause affected pipeline -> preserve evidence -> scope -> fix -> benchmark -> rep
 
 ## CI summary
 
-On the M0 foundation branch, product CI is still being assembled. The only committed workflow today is the agent-governance example, so the required checks listed in docs/27 remain the canonical release gate rather than an already-available end-to-end pipeline.
+On the M0 foundation branch, product CI is still being assembled. The only committed workflow today is the agent-governance example, so the required checks listed in [27_GITHUB_REPOSITORY_BLUEPRINT.md](27_GITHUB_REPOSITORY_BLUEPRINT.md) remain the canonical release gate rather than an already-available end-to-end pipeline.
