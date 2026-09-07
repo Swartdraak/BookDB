@@ -1,7 +1,11 @@
 # Scheduling Documentation / Roadmap
 
 ## M0 — Repository and licenses
-Monorepo, CI, AGPL server licensing, Apache SDK boundary, Dev Container, conventions.
+Monorepo, CI, AGPL/SDK licensing boundary, Dev Container, conventions.
+
+## M1 — Canonical schema + auth skeleton
+Foundational canonical PostgreSQL schema (Work/Expression/Edition/MarketListing + governance evidence tables),
+plus local/OIDC authentication skeleton semantics and runtime-safe auth introspection surface.
 
 ## M2 — Distributed platform
 PostgreSQL 18 baseline/HA contract, NATS JetStream, outbox, Valkey cache, OpenSearch, S3 abstraction.
