@@ -51,7 +51,7 @@ base_file = subprocess.run(
 )
 if base_file.returncode == 0:
     base_lease = yaml.safe_load(base_file.stdout) or {}
-    for field in ("status", "write_allow", "write_deny", "branch"):
+    for field in ("status", "write_allow", "write_deny", "branch", "base_commit"):
         if base_lease.get(field) != lease.get(field):
             print(
                 f"ERROR: lease {args.lease} changed {field} from "
