@@ -1,7 +1,7 @@
 schema_version: "1.0"
 objective_id: M1-lifecycle-kickoff
 repository: Swartdraak/BookDB
-branch: feat/m1-lifecycle-kickoff
+branch: feat/m1-schema-auth-skeleton
 state: in_progress
 entries:
   - item: M1 kickoff objective
@@ -10,10 +10,35 @@ entries:
     status: CREATED
   - task_id: M1-PLANNING-001
     agent_id: product-manager
-    state: READY_TO_LEASE
+    state: IN_PROGRESS
     lease_id: null
-    branch: null
+    branch: feat/m1-schema-auth-skeleton
     depends_on: []
+    reviews: []
+  - task_id: M1-DB-001
+    agent_id: database
+    state: IN_PROGRESS
+    lease_id: lease-M1-DB-001-001
+    branch: feat/m1-schema-auth-skeleton
+    depends_on:
+      - M1-PLANNING-001
+    reviews: []
+  - task_id: M1-AUTH-001
+    agent_id: auth-identity
+    state: IN_PROGRESS
+    lease_id: lease-M1-AUTH-001-001
+    branch: feat/m1-schema-auth-skeleton
+    depends_on:
+      - M1-PLANNING-001
+    reviews: []
+  - task_id: M1-DOCS-001
+    agent_id: documentation-writer
+    state: IN_PROGRESS
+    lease_id: lease-M1-DOCS-001-001
+    branch: feat/m1-schema-auth-skeleton
+    depends_on:
+      - M1-DB-001
+      - M1-AUTH-001
     reviews: []
   - item: M0 completion baseline
     kind: github-pr

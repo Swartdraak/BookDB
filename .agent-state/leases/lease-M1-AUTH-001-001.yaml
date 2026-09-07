@@ -1,0 +1,33 @@
+schema_version: "1.1"
+lease_id: lease-M1-AUTH-001-001
+task_id: M1-AUTH-001
+agent_id: auth-identity
+status: ACTIVE
+base_commit: a6d0cab77ef15ac8621e9b831f16d96a646d3c50
+branch: feat/m1-schema-auth-skeleton
+workspace_mode: CANONICAL
+workspace: /home/swartdraak/Repos/BookDB
+write_allow:
+  - internal/auth/**
+  - internal/config/**
+  - internal/runtime/**
+  - .agent-state/**
+write_deny:
+  - internal/database/migrations/**
+  - web/**
+allowed_actions:
+  - create
+  - modify
+  - delete-within-write_allow
+  - run-tests
+  - commit
+forbidden_actions:
+  - modify-outside-lease
+  - merge-to-main
+  - change-product-architecture
+required_reviewers:
+  - qa-reviewer
+  - security-reviewer
+expires_at: null
+parameters: {}
+

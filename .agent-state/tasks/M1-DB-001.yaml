@@ -1,0 +1,29 @@
+schema_version: "1.0"
+task_id: M1-DB-001
+title: Implement canonical schema foundation migration
+task_type: IMPLEMENTATION
+state: IN_PROGRESS
+objective: Replace the placeholder database migration with a canonical schema foundation for M1 including core bibliographic entities and governance tables.
+in_scope:
+  - internal/database/migrations/**
+  - internal/database/migrator_test.go
+out_of_scope:
+  - internal/runtime/**
+  - internal/config/**
+  - web/**
+assigned_agent: database
+dependencies:
+  - M1-PLANNING-001
+base_commit: a6d0cab77ef15ac8621e9b831f16d96a646d3c50
+acceptance_criteria:
+  - Canonical schema foundation migration file exists and applies in migrator flow.
+  - Existing migrator tests pass with the new migration set.
+  - Migration introduces key entities for Work/Expression/Edition/MarketListing and governance evidence tables.
+verification:
+  - command: go test ./internal/database
+    expected: PASS
+required_reviewers:
+  - qa-reviewer
+  - system-architect
+notes: Focus on a minimal, forward-compatible canonical schema baseline for M1.
+

@@ -1,0 +1,30 @@
+schema_version: "1.0"
+task_id: M1-DOCS-001
+title: Align M1 roadmap and certification documentation
+task_type: IMPLEMENTATION
+state: IN_PROGRESS
+objective: Update roadmap and lifecycle documentation to reflect the delivered M1 scope and certification evidence.
+in_scope:
+  - docs/06_SCHEDULING_DOCUMENTATION.md
+  - README.md
+  - project-management/BACKLOG_AND_MILESTONES.md
+out_of_scope:
+  - internal/**
+  - web/**
+assigned_agent: documentation-writer
+dependencies:
+  - M1-DB-001
+  - M1-AUTH-001
+base_commit: a6d0cab77ef15ac8621e9b831f16d96a646d3c50
+acceptance_criteria:
+  - Scheduling docs include M1 with explicit scope.
+  - README no longer reports only M0 status once M1 is delivered.
+  - M1 objective and ledger are updated to completed states with evidence.
+verification:
+  - command: python3 tools/validate_agent_kit.py
+    expected: "Errors: 0"
+required_reviewers:
+  - documentation-reviewer
+  - qa-reviewer
+notes: Documentation must reflect actual repository implementation state.
+
