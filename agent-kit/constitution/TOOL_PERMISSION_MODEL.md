@@ -7,7 +7,8 @@ Instructions should be paired with tool permissions whenever the harness support
 Recommended:
 - repository read: YES
 - Git status/log/diff: YES
-- create branch/worktree: YES
+- create branch: YES
+- create external isolated worktree (ISOLATED mode only, outside canonical repo): YES
 - invoke agents: YES
 - write `.agent-state/**`: YES
 - write implementation files: NO
@@ -19,7 +20,7 @@ Recommended:
 
 Recommended:
 - repository read: YES
-- write leased worktree: YES
+- write leased workspace (CANONICAL or ISOLATED): YES
 - shell/build/test: YES
 - Git commit: YES
 - merge main: NO

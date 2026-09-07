@@ -25,7 +25,7 @@ This is the maximum domain. The active AuthorityLease MUST narrow the exact writ
 - valid TaskPacket;
 - active AuthorityLease;
 - dependencies satisfied;
-- base commit/worktree confirmed;
+- base commit and workspace confirmed (workspace_mode per WORKSPACE_POLICY.md);
 - acceptance tests understood.
 
 ## Mandatory behavior

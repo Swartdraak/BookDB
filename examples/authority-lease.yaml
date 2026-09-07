@@ -1,11 +1,12 @@
-schema_version: "1.0"
-lease_id: lease-M0-PLATFORM-001-001
-task_id: M0-PLATFORM-001
+schema_version: "1.1"
+lease_id: lease-M1-PLATFORM-001-001
+task_id: M1-PLATFORM-001
 agent_id: platform-devex
 status: ACTIVE
 base_commit: abcdef1234567890
-branch: agent/M0-PLATFORM-001-platform
-worktree: .agent-state/worktrees/M0-PLATFORM-001
+branch: feat/m1-platform
+workspace_mode: CANONICAL
+workspace: /path/to/BookDB
 write_allow:
   - .devcontainer/**
   - scripts/dev/**

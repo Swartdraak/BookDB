@@ -1,0 +1,28 @@
+schema_version: "1.0"
+task_id: M0-INTEGRATION-GOVERNANCE-WORKFLOW-002
+title: Resolve governance workflow integration conflict
+task_type: REPAIR
+state: READY_TO_LEASE
+objective: Resolve cherry-pick conflict in agent-governance workflow and preserve the delegated trusted-baseline lease-validation behavior.
+in_scope:
+  - .github/workflows/agent-governance.yml
+out_of_scope:
+  - internal/**
+  - web/**
+  - docs/**
+  - .agent-state/**
+assigned_agent: devops-release
+dependencies:
+  - M0-REPAIR-GOVERNANCE-WORKFLOW-002
+base_commit: f5fab4b91420f3c03ae889df8d707d201915119d
+acceptance_criteria:
+  - Conflict resolved in agent-governance workflow with trusted baseline behavior retained.
+  - Cherry-pick completes on fix/m0-governance-certification.
+  - Workflow YAML valid.
+verification:
+  - command: python3 -c "from pathlib import Path; import yaml; yaml.safe_load(Path('.github/workflows/agent-governance.yml').read_text(encoding='utf-8')); print('workflow_yaml_ok')"
+    expected: workflow_yaml_ok
+required_reviewers:
+  - qa-reviewer
+  - security-reviewer
+notes: Integration conflict repair only.

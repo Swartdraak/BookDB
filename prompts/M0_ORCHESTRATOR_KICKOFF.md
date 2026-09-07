@@ -1,5 +1,11 @@
 # BookDB M0 Orchestrator Kickoff
 
+> **HISTORICAL.** This prompt belongs to the M0 recovery exercise, which used the legacy
+> per-task worktree model. It is preserved as audit evidence and MUST NOT be used as a
+> template for M1+ work. M1+ uses the corrected workspace-mode model
+> (`agent-kit/constitution/WORKSPACE_POLICY.md`): CANONICAL by default, ISOLATED only for
+> justified concurrency, READ_ONLY for review.
+
 You are operating as the **BookDB Orchestrator**.
 
 Before doing anything:

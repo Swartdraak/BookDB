@@ -60,7 +60,6 @@ if base_file.returncode == 0:
         "write_deny",
         "branch",
         "base_commit",
-        "worktree",
         "allowed_actions",
         "forbidden_actions",
         "required_reviewers",
@@ -70,6 +69,25 @@ if base_file.returncode == 0:
             print(
                 f"ERROR: lease {args.lease} changed {field} from "
                 f"{base_lease.get(field)!r} to {lease.get(field)!r}; "
+                "forbidden without explicit governance approval"
+            )
+            sys.exit(1)
+    # Workspace identity is version-specific: 1.0 legacy uses `worktree`,
+    # 1.1 uses `workspace_mode` + `workspace`.
+    if str(lease.get("schema_version", "1.0")) == "1.1":
+        for field in ("workspace_mode", "workspace"):
+            if base_lease.get(field) != lease.get(field):
+                print(
+                    f"ERROR: lease {args.lease} changed {field} from "
+                    f"{base_lease.get(field)!r} to {lease.get(field)!r}; "
+                    "forbidden without explicit governance approval"
+                )
+                sys.exit(1)
+    else:
+        if base_lease.get("worktree") != lease.get("worktree"):
+            print(
+                f"ERROR: lease {args.lease} changed worktree from "
+                f"{base_lease.get('worktree')!r} to {lease.get('worktree')!r}; "
                 "forbidden without explicit governance approval"
             )
             sys.exit(1)

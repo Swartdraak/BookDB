@@ -45,6 +45,8 @@ for p in (ROOT/"agent-kit/contracts").glob("*.schema.json"):
 pairs = [
     ("examples/task-packet.yaml", "TASK_PACKET.schema.json"),
     ("examples/authority-lease.yaml", "AUTHORITY_LEASE.schema.json"),
+    ("examples/authority-lease-isolated.yaml", "AUTHORITY_LEASE.schema.json"),
+    ("examples/authority-lease-read-only.yaml", "AUTHORITY_LEASE.schema.json"),
     ("examples/handoff.yaml", "HANDOFF.schema.json"),
     ("examples/review-report.yaml", "REVIEW_REPORT.schema.json"),
     ("examples/delegation-ledger.yaml", "DELEGATION_LEDGER.schema.json"),

@@ -42,7 +42,8 @@ The lease defines:
 - task ID;
 - agent;
 - base commit;
-- branch/worktree;
+- workspace mode and workspace (CANONICAL / ISOLATED / READ_ONLY);
+- branch;
 - writable paths;
 - denied paths;
 - allowed actions;
