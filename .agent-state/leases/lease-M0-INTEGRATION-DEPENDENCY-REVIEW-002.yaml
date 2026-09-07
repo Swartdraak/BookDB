@@ -1,9 +1,9 @@
 schema_version: "1.0"
-lease_id: lease-M0-INTEGRATION-SECURITY-WORKFLOW-001-001
-task_id: M0-INTEGRATION-SECURITY-WORKFLOW-001
+lease_id: lease-M0-INTEGRATION-DEPENDENCY-REVIEW-002-001
+task_id: M0-INTEGRATION-DEPENDENCY-REVIEW-002
 agent_id: devops-release
 status: ACTIVE
-base_commit: 30b8ccf
+base_commit: c628b299a9dd2c6b955e1becbe19932aed4d31a4
 branch: fix/m0-governance-certification
 worktree: /home/swartdraak/Repos/BookDB
 write_allow:
@@ -16,7 +16,6 @@ write_deny:
 allowed_actions:
   - modify
   - add
-  - delete-within-write_allow
   - cherry-pick-continue
   - commit
 forbidden_actions:

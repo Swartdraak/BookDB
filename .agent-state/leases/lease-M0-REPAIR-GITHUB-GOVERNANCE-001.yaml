@@ -1,0 +1,27 @@
+schema_version: "1.0"
+lease_id: lease-M0-REPAIR-GITHUB-GOVERNANCE-001-001
+task_id: M0-REPAIR-GITHUB-GOVERNANCE-001
+agent_id: devops-release
+status: ACTIVE
+base_commit: 175e332a9752960ae2472e2521cf18b54acf5934
+branch: agent/M0-REPAIR-GITHUB-GOVERNANCE-001
+worktree: /home/swartdraak/Repos/BookDB/.agent-state/worktrees/M0-REPAIR-GITHUB-GOVERNANCE-001
+write_allow:
+  - .github/workflows/**
+write_deny:
+  - internal/**
+  - web/**
+  - docs/**
+allowed_actions:
+  - create
+  - modify
+  - delete-within-write_allow
+  - commit
+forbidden_actions:
+  - modify-outside-lease
+  - merge-to-main
+required_reviewers:
+  - qa-reviewer
+  - security-reviewer
+expires_at: null
+parameters: {}
