@@ -1,0 +1,15 @@
+schema_version: "1.0"
+review_id: review-M1-DB-001-ARCH-001
+task_id: M1-DB-001
+reviewer_agent: system-architect
+review_type: ARCHITECTURE_REVIEW
+result: APPROVE
+scope:
+  - canonical schema alignment
+  - forward compatibility
+checks:
+  - name: entity baseline coverage
+    status: PASS
+    evidence: Work/Expression/Edition/MarketListing and governance evidence tables exist.
+findings: []
+notes: M1 migration aligns with milestone goal; deeper normalization remains for later milestones.

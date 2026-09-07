@@ -2,7 +2,7 @@ schema_version: "1.0"
 task_id: M1-DB-001
 title: Implement canonical schema foundation migration
 task_type: IMPLEMENTATION
-state: IN_PROGRESS
+state: HANDOFF_SUBMITTED
 objective: Replace the placeholder database migration with a canonical schema foundation for M1 including core bibliographic entities and governance tables.
 in_scope:
   - internal/database/migrations/**
@@ -25,5 +25,4 @@ verification:
 required_reviewers:
   - qa-reviewer
   - system-architect
-notes: Focus on a minimal, forward-compatible canonical schema baseline for M1.
-
+notes: Implementation completed; handoff submitted for review.

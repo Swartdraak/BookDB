@@ -2,7 +2,7 @@ schema_version: "1.0"
 task_id: M1-DOCS-001
 title: Align M1 roadmap and certification documentation
 task_type: IMPLEMENTATION
-state: IN_PROGRESS
+state: HANDOFF_SUBMITTED
 objective: Update roadmap and lifecycle documentation to reflect the delivered M1 scope and certification evidence.
 in_scope:
   - docs/06_SCHEDULING_DOCUMENTATION.md
@@ -26,5 +26,4 @@ verification:
 required_reviewers:
   - documentation-reviewer
   - qa-reviewer
-notes: Documentation must reflect actual repository implementation state.
-
+notes: Documentation updates completed; handoff submitted for review.
