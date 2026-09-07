@@ -52,6 +52,14 @@ jobs:
 
             core.setOutput("capability", capability);
             core.setOutput("reason", reason);
+            core.setOutput("allow_unavailable", allowUnavailable ? "true" : "false");
+
+            await core.summary
+              .addHeading("Dependency review capability probe")
+              .addRaw(`capability: ${capability}\n`)
+              .addRaw(`reason: ${reason}\n`)
+              .addRaw(`allow_unavailable: ${allowUnavailable ? "true" : "false"}\n`)
+              .write();
 
             if (capability === "disabled") {
               core.setFailed("Dependency graph must be enabled to enforce dependency review. Enable it in repository Settings > Security & analysis, then re-run this workflow.");
@@ -70,12 +78,18 @@ jobs:
           fail-on-severity: moderate
           license-check: true
 
-      - name: Dependency review capability status
-        if: steps.dep-graph.outputs.capability == 'unavailable' && vars.ALLOW_DEPENDENCY_REVIEW_UNAVAILABLE == 'true'
+      - name: Dependency review capability audit
+        if: always() && steps.dep-graph.outputs.capability != 'enabled'
         run: |
-          echo "Dependency review was skipped by explicit exception: ALLOW_DEPENDENCY_REVIEW_UNAVAILABLE=true"
-          echo "Reason: ${{ steps.dep-graph.outputs.reason }}"
-          echo "If this is unexpected, remove ALLOW_DEPENDENCY_REVIEW_UNAVAILABLE and restore capability visibility."
+          echo "dependency_review_capability=${{ steps.dep-graph.outputs.capability }}"
+          echo "dependency_review_reason=${{ steps.dep-graph.outputs.reason }}"
+          echo "dependency_review_allow_unavailable=${{ steps.dep-graph.outputs.allow_unavailable }}"
+          if [ "${{ steps.dep-graph.outputs.allow_unavailable }}" = "true" ]; then
+            echo "Dependency review was skipped by an explicit temporary exception."
+            echo "Remove ALLOW_DEPENDENCY_REVIEW_UNAVAILABLE after restoring dependency graph visibility."
+          else
+            echo "Dependency review remains blocked because dependency graph capability is unavailable."
+          fi
 
   secret-scan:
     runs-on: ubuntu-latest

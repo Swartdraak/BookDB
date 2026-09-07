@@ -24,7 +24,7 @@ checkpoints:
     evidence:
       - "Security supply-chain workflow restored to approved fail-closed behavior and independently approved."
   - id: M0_REMOTE_CI_GREEN
-    status: PENDING
+    status: IN_PROGRESS
     branch: fix/m0-governance-certification
     evidence: []
   - id: M0_RECOVERY_MERGED

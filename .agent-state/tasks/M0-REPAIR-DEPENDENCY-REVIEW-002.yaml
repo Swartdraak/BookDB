@@ -1,0 +1,32 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-DEPENDENCY-REVIEW-002
+title: Handle dependency graph capability unavailability without removing dependency review
+task_type: REPAIR
+state: DONE
+objective: Keep dependency review in the security workflow while handling repositories where dependency graph capability is unavailable or not exposed to the token.
+in_scope:
+  - .github/workflows/security-supply-chain.yml
+out_of_scope:
+  - internal/**
+  - web/**
+  - docs/**
+  - .agent-state/**
+assigned_agent: devops-release
+dependencies:
+  - M0-REPAIR-SECURITY-WORKFLOW-001
+base_commit: f5fab4b91420f3c03ae889df8d707d201915119d
+acceptance_criteria:
+  - Dependency review job remains present in workflow.
+  - Capability probe behavior is explicit and does not silently bypass checks.
+  - Secret scan and SBOM/vulnerability jobs remain intact with HIGH/CRITICAL gating.
+verification:
+  - command: python3 -c "from pathlib import Path; import yaml; yaml.safe_load(Path('.github/workflows/security-supply-chain.yml').read_text(encoding='utf-8')); print('workflow_yaml_ok')"
+    expected: workflow_yaml_ok
+required_reviewers:
+  - security-reviewer
+  - qa-reviewer
+reviews:
+  - security-reviewer
+  - qa-reviewer
+notes: This task responds to remote dependency-review capability failure after explicit API enable attempts.
+lease_id: lease-M0-REPAIR-DEPENDENCY-REVIEW-002-001

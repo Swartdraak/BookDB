@@ -1,6 +1,35 @@
 schema_version: "1.0"
-objective_id: M0
+objective_id: M0-governance-certification
+repository: Swartdraak/BookDB
+branch: fix/m0-governance-certification
+pull_request:
+  number: 1
+  url: https://github.com/Swartdraak/BookDB/pull/1
+issue:
+  number: 2
+  url: https://github.com/Swartdraak/BookDB/issues/2
+milestone:
+  number: 1
+  title: M0 Repository and licenses
+  url: https://github.com/Swartdraak/BookDB/milestones/1
+labels:
+  - type:docs
+  - area:ops
+  - P1
+state: complete
 entries:
+  - item: M0 milestone
+    kind: github-milestone
+    value: https://github.com/Swartdraak/BookDB/milestones/1
+    status: CREATED
+  - item: M0 parent issue
+    kind: github-issue
+    value: https://github.com/Swartdraak/BookDB/issues/2
+    status: CREATED
+  - item: PR #1
+    kind: github-pr
+    value: https://github.com/Swartdraak/BookDB/pull/1
+    status: UPDATED
   - task_id: M0-RECOVERY-ARCH-001
     agent_id: system-architect
     state: READY_TO_LEASE
@@ -207,3 +236,13 @@ entries:
     reviews:
       - qa-reviewer
       - security-reviewer
+  - task_id: M0-REPAIR-DEPENDENCY-REVIEW-002
+    agent_id: devops-release
+    state: DONE
+    lease_id: lease-M0-REPAIR-DEPENDENCY-REVIEW-002-001
+    branch: agent/M0-REPAIR-DEPENDENCY-REVIEW-002
+    depends_on:
+      - M0-REPAIR-SECURITY-WORKFLOW-001
+    reviews:
+      - security-reviewer
+      - qa-reviewer
