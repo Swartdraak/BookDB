@@ -41,7 +41,9 @@ export function AppShell() {
             <ul className="fact-list">
               <li>React + TypeScript + Vite</li>
               <li>Accessible shell with landmark structure</li>
-              <li>API client output: <code>src/api/generated/</code></li>
+              <li>
+                API client output: <code>src/api/generated/</code>
+              </li>
             </ul>
           </section>
         </aside>

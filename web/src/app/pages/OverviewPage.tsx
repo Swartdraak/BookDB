@@ -6,8 +6,8 @@ export function OverviewPage() {
           <p className="eyebrow">Foundation</p>
           <h2>Intentional, accessible, and ready for the next slice.</h2>
           <p className="lede">
-            The scaffold gives the frontend a stable route/layout architecture, a clear
-            validation toolchain, and a defined location for generated API clients.
+            The scaffold gives the frontend a stable route/layout architecture, a clear validation
+            toolchain, and a defined location for generated API clients.
           </p>
         </div>
 
@@ -43,10 +43,18 @@ export function OverviewPage() {
         <article className="surface-panel">
           <h3>Validation commands</h3>
           <ul className="command-list">
-            <li><code>npm run typecheck</code></li>
-            <li><code>npm run lint</code></li>
-            <li><code>npm run test</code></li>
-            <li><code>npm run build</code></li>
+            <li>
+              <code>npm run typecheck</code>
+            </li>
+            <li>
+              <code>npm run lint</code>
+            </li>
+            <li>
+              <code>npm run test</code>
+            </li>
+            <li>
+              <code>npm run build</code>
+            </li>
           </ul>
         </article>
       </section>
