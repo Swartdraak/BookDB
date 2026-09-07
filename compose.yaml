@@ -1,0 +1,196 @@
+# BookDB development Compose environment
+#
+# DEVELOPMENT ONLY — NOT HA. Multiple containers on one host do not provide
+# distinct failure domains (see `.github/AGENTS.md` non-negotiable #16 and
+# `deployment/HA_REFERENCE_TOPOLOGY.md`). Do not present this as HA.
+#
+# For a reviewable production-oriented reference topology, see
+# `deployment/DEPLOYMENT_PLAN.md` and `deployment/HA_REFERENCE_TOPOLOGY.md`.
+#
+# Services:
+#   - Postgres 18 (canonical store; direct 5432 + PgBouncer 6432 in front)
+#   - PgBouncer (transaction-mode pooler for app; direct for `bookdb migrate`)
+#   - NATS 2 with JetStream enabled (durable work/event bus)
+#   - Valkey 9 (cache, rate-limit, ephemeral coordination; NOT durable state)
+#   - OpenSearch 3 (production-catalog SEARCH PROJECTION — rebuildable)
+#   - SeaweedFS (S3-compatible reference object storage; master/volume/filer/s3)
+#
+# No application services (api, workers, scheduler) are started by this file.
+# Compose this with the application services via:
+#   docker compose -f compose.yaml -f deployment/compose/app.dev.yaml up
+#
+# Pin policy: image versions are pinned in `compose.pinned.yaml` overlays for
+# release reproducibility. For local fast iteration, the tags below (which are
+# stable major-line tags) are used. Do NOT tag any image here with `:latest`
+# for a release build — the CI gate `pinned-images` fails on this.
+
+name: bookdb
+
+networks:
+  bookdb:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  pgbouncer_auth:     # small shared auth_file volume for pgbouncer
+  nats_data:
+  valkey_data:
+  opensearch_data:
+  seaweed_data:
+
+services:
+  ## --- Canonical store -------------------------------------------------
+  postgres:
+    image: postgres:18
+    container_name: bookdb-postgres
+    environment:
+      POSTGRES_DB: bookdb
+      POSTGRES_USER: bookdb
+      POSTGRES_PASSWORD: bookdb
+      # Pinned to a documented development-only password. CI and dev never
+      # share real credentials; production uses vault-injected secrets.
+      POSTGRES_INITDB_ARGS: "--auth-local=trust --auth-host=scram-sha-256"
+    ports:
+      # Localhost-only in dev. Do not expose 5432 to 0.0.0.0 in any profile.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks: [bookdb]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookdb -d bookdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.25.2-p0
+    container_name: bookdb-pgbouncer
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://bookdb:bookdb@postgres:5432/bookdb
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+    ports:
+      - "127.0.0.1:6432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U bookdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks: [bookdb]
+
+  ## --- Durable distributed work/event bus ------------------------------
+  nats:
+    image: nats:2.14.6-alpine3.22
+    container_name: bookdb-nats
+    command: ["-js", "-sd", "/data", "-m", "8222"]
+    ports:
+      - "127.0.0.1:4222:4222"   # client
+      - "127.0.0.1:8222:8222"   # monitoring (dev only)
+    volumes:
+      - nats_data:/data
+    networks: [bookdb]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8222/healthz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: "no"   # dev: keep state visible; JetStream files persist
+
+  ## --- Cache / rate limit / ephemeral coordination only -----------------
+  valkey:
+    image: valkey/valkey:9.0
+    container_name: bookdb-valkey
+    command: ["valkey-server", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks: [bookdb]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  ## --- Production-catalog search projection (rebuildable) --------------
+  opensearch:
+    image: opensearchproject/opensearch:3.0.0
+    container_name: bookdb-opensearch
+    environment:
+      discovery.type: single-node
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    networks: [bookdb]
+    # OpenSearch 3.x requires a one-time bootstrap; the healthcheck is tolerant.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://127.0.0.1:9200/_cluster/health || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      memlock:
+        soft: -1
+        hard: -1
+    cap_add:
+      - IPC_LOCK
+    restart: unless-stopped
+
+  ## --- S3-compatible reference object storage (SeaweedFS) --------------
+  # SeaweedFS provides master/volume/filer/s3; we use the S3 API only.
+  # License note: see THIRD_PARTY_NOTICES.md for the SeaweedFS release pin.
+  seaweed-master:
+    image: chrislusf/seaweedfs:4.22
+    container_name: bookdb-seaweed-master
+    command: ["master", "-ip=seaweed-master", "-port=9333", "-metricsPort=9334"]
+    ports:
+      - "127.0.0.1:9333:9333"
+    networks: [bookdb]
+    restart: unless-stopped
+
+  seaweed-volume:
+    image: chrislusf/seaweedfs:4.22
+    container_name: bookdb-seaweed-volume
+    command: ["volume", "-mserver=seaweed-master:9333", "-dir=/data", "-port=8080"]
+    volumes:
+      - seaweed_data:/data
+    networks: [bookdb]
+    depends_on: [seaweed-master]
+    restart: unless-stopped
+
+  seaweed-filer:
+    image: chrislusf/seaweedfs:4.22
+    container_name: bookdb-seaweed-filer
+    command: ["filer", "-master=seaweed-master:9333", "-port=8888"]
+    ports:
+      - "127.0.0.1:8888:8888"   # filer http (dev only)
+    depends_on: [seaweed-master, seaweed-volume]
+    networks: [bookdb]
+    restart: unless-stopped
+
+  seaweed-s3:
+    image: chrislusf/seaweedfs:4.22
+    container_name: bookdb-seaweed-s3
+    command: ["s3", "-filer=seaweed-filer:8888", "-port=8333", "-port.public=8333"]
+    ports:
+      - "127.0.0.1:8333:8333"
+    depends_on: [seaweed-filer]
+    networks: [bookdb]
+    restart: unless-stopped

@@ -1,0 +1,30 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-DEPENDENCY-REVIEW-002
+agent_id: devops-release
+lease_id: lease-M0-REPAIR-DEPENDENCY-REVIEW-002-001
+result: COMPLETE
+summary: Keep dependency review present while handling unavailable GitHub dependency graph capability.
+changed_files:
+  - .github/workflows/security-supply-chain.yml
+commits:
+  - e073356c73570e19232fc4d45a7c137e8a1cc835
+commands_run:
+  - cd /home/swartdraak/Repos/BookDB && docker build -f .devcontainer/Dockerfile -t bookdb-devcontainer:test .
+  - cd /home/swartdraak/Repos/BookDB && (command -v trivy >/dev/null 2>&1 && trivy image --severity HIGH,CRITICAL --ignore-unfixed bookdb-devcontainer:test) || docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.36.0 image --severity HIGH,CRITICAL --ignore-unfixed bookdb-devcontainer:test
+verification_results:
+  - check: workflow_yaml
+    status: PASS
+    evidence: workflow parses successfully
+  - check: build
+    status: PASS
+    evidence: devcontainer image builds successfully
+  - check: trivy
+    status: PASS
+    evidence: no actionable HIGH/CRITICAL findings remain
+decisions:
+  - Preserve dependency-review job in fail-closed mode.
+  - Keep explicit temporary exception path for unavailable dependency graph capability.
+blockers: []
+risks:
+  - GitHub dependency graph visibility may remain unavailable on some repositories.
+followups: []

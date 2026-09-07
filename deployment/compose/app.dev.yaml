@@ -1,0 +1,110 @@
+# BookDB development Compose application overlay
+#
+# Start the application alongside the core services with:
+#   docker compose -f compose.yaml -f deployment/compose/app.dev.yaml up
+#
+# This file declares the BookDB services (api, scheduler, workers). It
+# assumes a built `bookdb` image is available. In CI and in dev, use the
+# Makefile targets to build the image first.
+
+name: bookdb
+
+services:
+  bookdb-api:
+    image: bookdb/bookdb:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookdb-api
+    depends_on:
+      pgbouncer:      {condition: service_healthy}
+      nats:           {condition: service_healthy}
+      valkey:         {condition: service_healthy}
+      opensearch:     {condition: service_started}
+      seaweed-s3:     {condition: service_started}
+    ports:
+      - "127.0.0.1:8080:8080"   # API
+      - "127.0.0.1:9090:9090"   # metrics (dev only)
+    environment:
+      BOOKDB_ENV: development
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb?sslmode=disable
+      BOOKDB_DATABASE_URL_DIRECT: postgres://bookdb:bookdb@postgres:5432/bookdb?sslmode=disable
+      BOOKDB_NATS_URL: nats://nats:4222
+      BOOKDB_VALKEY_URL: redis://valkey:6379/0
+      BOOKDB_OPENSEARCH_URL: http://opensearch:9200
+      BOOKDB_S3_ENDPOINT: http://seaweed-s3:8333
+      BOOKDB_S3_ACCESS_KEY: bookdb
+      BOOKDB_S3_SECRET_KEY: bookdb-dev-secret-do-not-use-in-prod
+      BOOKDB_S3_BUCKET: bookdb-assets
+      BOOKDB_S3_FORCE_PATH_STYLE: "true"
+      BOOKDB_LOG_LEVEL: info
+      BOOKDB_API_ADDR: ":8080"
+      BOOKDB_METRICS_ADDR: ":9090"
+      BOOKDB_SOURCE_REGISTRY_PATH: /app/config/source-registry.yaml
+    volumes:
+      - ./config/source-registry.yaml:/app/config/source-registry.yaml:ro
+    command: ["api"]
+    restart: unless-stopped
+
+  bookdb-scheduler:
+    image: bookdb/bookdb:dev
+    container_name: bookdb-scheduler
+    depends_on:
+      pgbouncer: {condition: service_healthy}
+      nats:      {condition: service_healthy}
+    environment:
+      BOOKDB_ENV: development
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb?sslmode=disable
+      BOOKDB_NATS_URL: nats://nats:4222
+      BOOKDB_LOG_LEVEL: info
+    volumes:
+      - ./config/source-registry.yaml:/app/config/source-registry.yaml:ro
+    command: ["scheduler"]
+    restart: unless-stopped
+
+  bookdb-worker-ingest:
+    image: bookdb/bookdb:dev
+    container_name: bookdb-worker-ingest
+    depends_on:
+      pgbouncer: {condition: service_healthy}
+      nats:      {condition: service_healthy}
+      seaweed-s3: {condition: service_started}
+    environment:
+      BOOKDB_ENV: development
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb?sslmode=disable
+      BOOKDB_NATS_URL: nats://nats:4222
+      BOOKDB_S3_ENDPOINT: http://seaweed-s3:8333
+      BOOKDB_S3_ACCESS_KEY: bookdb
+      BOOKDB_S3_SECRET_KEY: bookdb-dev-secret-do-not-use-in-prod
+      BOOKDB_S3_BUCKET: bookdb-assets
+      BOOKDB_S3_FORCE_PATH_STYLE: "true"
+    command: ["worker", "ingest"]
+    restart: unless-stopped
+
+  bookdb-worker-reconcile:
+    image: bookdb/bookdb:dev
+    container_name: bookdb-worker-reconcile
+    depends_on:
+      pgbouncer: {condition: service_healthy}
+      nats:      {condition: service_healthy}
+    environment:
+      BOOKDB_ENV: development
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb?sslmode=disable
+      BOOKDB_NATS_URL: nats://nats:4222
+    command: ["worker", "reconcile"]
+    restart: unless-stopped
+
+  bookdb-worker-index:
+    image: bookdb/bookdb:dev
+    container_name: bookdb-worker-index
+    depends_on:
+      pgbouncer:  {condition: service_healthy}
+      nats:       {condition: service_healthy}
+      opensearch: {condition: service_started}
+    environment:
+      BOOKDB_ENV: development
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb?sslmode=disable
+      BOOKDB_NATS_URL: nats://nats:4222
+      BOOKDB_OPENSEARCH_URL: http://opensearch:9200
+    command: ["worker", "index"]
+    restart: unless-stopped

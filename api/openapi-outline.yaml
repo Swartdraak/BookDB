@@ -1,0 +1,52 @@
+openapi: 3.1.0
+info:
+  title: BookDB API
+  version: 0.2.0-planning
+  license:
+    name: Apache-2.0
+servers:
+  - url: /api/v1
+paths:
+  /search:
+    get:
+      summary: Search the canonical BookDB catalog
+      responses:
+        "200": {description: Search results}
+  /works/{id}:
+    get:
+      summary: Get canonical work
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        "200": {description: Work}
+        "301": {description: Merged ID redirect}
+        "404": {description: Not found}
+  /resolve:
+    get:
+      summary: Resolve standard/source identifier
+      responses:
+        "200": {description: Resolution}
+  /changes:
+    get:
+      summary: Incremental canonical change feed
+      responses:
+        "200": {description: Change page}
+  /proposals:
+    post:
+      summary: Submit a non-public catalog proposal
+      responses:
+        "202": {description: Proposal submitted for review}
+  /admin/proposals/{id}/approve:
+    post:
+      summary: Administrator approval of user proposal
+      responses:
+        "200": {description: Approved and queued for canonical publication}
+        "403": {description: Administrator permission required}
+  /admin/sources/{id}/sync:
+    post:
+      summary: Manually trigger a source synchronization
+      responses:
+        "202": {description: Sync requested}

@@ -1,0 +1,15 @@
+version: 1
+workflow_id: incident
+sequence:
+  - DECLARE
+  - CONTAIN
+  - PRESERVE_EVIDENCE
+  - SCOPE
+  - DELEGATE_REPAIR
+  - VALIDATE_IN_STAGING
+  - RESTORE_OR_REPLAY
+  - MONITOR
+  - POSTMORTEM
+rules:
+  destructive_sql_before_evidence:
+    allowed: false

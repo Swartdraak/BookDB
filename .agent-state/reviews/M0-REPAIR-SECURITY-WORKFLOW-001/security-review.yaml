@@ -1,0 +1,26 @@
+schema_version: "1.0"
+review_id: review-M0-REPAIR-SECURITY-WORKFLOW-001-security
+task_id: M0-REPAIR-SECURITY-WORKFLOW-001
+reviewer_agent: security-reviewer
+review_type: SECURITY_REVIEW
+result: APPROVE
+scope:
+  - .agent-state/tasks/M0-REPAIR-SECURITY-WORKFLOW-001.yaml
+  - .agent-state/leases/lease-M0-REPAIR-SECURITY-WORKFLOW-001.yaml
+  - .agent-state/handoffs/M0-REPAIR-SECURITY-WORKFLOW-001/handoff.yaml
+  - .github/workflows/security-supply-chain.yml
+checks:
+  - name: dependency review fail-closed
+    status: PASS
+    evidence: "Workflow fails when dependency graph is disabled or unreadable."
+  - name: gitleaks token-backed pull-request scan
+    status: PASS
+    evidence: "GITHUB_TOKEN configured for gitleaks action."
+  - name: trivy vulnerability gating
+    status: PASS
+    evidence: "Trivy pinned to v0.36.0 with HIGH/CRITICAL failure gate."
+  - name: least privilege
+    status: PASS
+    evidence: "Workflow permissions remain contents: read."
+findings: []
+notes: "Security approved for repaired workflow behavior."

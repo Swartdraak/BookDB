@@ -1,0 +1,32 @@
+schema_version: "1.0"
+objective_id: M0
+checkpoints:
+  - id: M0_RECOVERY_REPAIRS_COMPLETE
+    status: COMPLETE
+    branch: fix/m0-governance-certification
+    evidence:
+      - "Governance, security workflow, web provenance normalization, and final web formatting repairs are integrated with independent approvals."
+  - id: M0_WEB_PROVENANCE_NORMALIZED
+    status: COMPLETE
+    branch: fix/m0-governance-certification
+    evidence:
+      - "Improper commit 9b66d6d removed from integration ancestry; approved lineage preserved via executor commit."
+  - id: M0_GOVERNANCE_REPAIR_APPROVED
+    status: COMPLETE
+    branch: fix/m0-governance-certification
+    commit: 30b8ccf42d139f111e423c25335894682ef6aa95
+    evidence:
+      - "Duplicate active governance workflow removed and independently approved."
+  - id: M0_SECURITY_WORKFLOW_REPAIR_APPROVED
+    status: COMPLETE
+    branch: fix/m0-governance-certification
+    commit: 76c00e5179735fe63dc93992704eb554f8b054fa
+    evidence:
+      - "Security supply-chain workflow restored to approved fail-closed behavior and independently approved."
+  - id: M0_REMOTE_CI_GREEN
+    status: IN_PROGRESS
+    branch: fix/m0-governance-certification
+    evidence: []
+  - id: M0_RECOVERY_MERGED
+    status: PENDING
+    evidence: []

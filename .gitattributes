@@ -1,0 +1,58 @@
+* text=auto eol=lf
+*.md text=auto eol=lf
+*.go text=auto eol=lf
+*.ts text=auto eol=lf
+*.tsx text=auto eol=lf
+*.js text=auto eol=lf
+*.html text=auto eol=lf
+*.yaml text=auto eol=lf
+*.yml text=auto eol=lf
+*.json text=auto eol=lf
+*.sh text=auto eol=lf
+*.sql text=auto eol=lf
+*.env text=auto eol=lf
+*.env.example text=auto eol=lf
+LICENSE text=auto eol=lf
+Makefile text=auto eol=lf
+
+# PowerShell scripts (Windows-compatible wrappers)
+*.ps1 text=auto eol=crlf
+
+# Executable scripts
+scripts/*.sh text=auto eol=lf -diff
+
+# Binary / media
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.gif binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.7z binary
+*.mp4 binary
+*.mov binary
+
+# Docker / OCI
+Dockerfile text=auto eol=lf
+docker-compose*.yml text=auto eol=lf
+
+# OpenAPI and JSON schemas
+openapi*.yaml text=auto eol=lf
+*.schema.json text=auto eol=lf
+
+# Dev containers
+.devcontainer/* text=auto eol=lf
+
+# Lockfiles — keep line endings stable
+package-lock.json text=auto eol=lf
+pnpm-lock.yaml text=auto eol=lf
+go.sum text=auto eol=lf
+yarn.lock text=auto eol=lf

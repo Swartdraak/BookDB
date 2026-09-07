@@ -1,0 +1,31 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-SECURITY-WORKFLOW-001
+agent_id: devops-release
+lease_id: lease-M0-REPAIR-SECURITY-WORKFLOW-001-001
+result: COMPLETE
+summary: Repaired security supply-chain workflow with fail-closed dependency review behavior and supported secret/vulnerability scanning actions.
+changed_files:
+  - .github/workflows/security-supply-chain.yml
+commits:
+  - abc12d839c137717c535a34ab65f309f89ce80e5
+commands_run:
+  - "python3 -c \"from pathlib import Path; import yaml; yaml.safe_load(Path('.github/workflows/security-supply-chain.yml').read_text(encoding='utf-8')); print('workflow_yaml_ok')\""
+verification_results:
+  - check: workflow yaml parse
+    status: PASS
+    evidence: "workflow_yaml_ok"
+  - check: dependency review fail-closed logic
+    status: PASS
+    evidence: "Workflow fails when dependency graph is disabled or unreadable."
+  - check: gitleaks pull_request token requirement
+    status: PASS
+    evidence: "GITHUB_TOKEN is provided to gitleaks action."
+  - check: trivy action pin and HIGH/CRITICAL gating
+    status: PASS
+    evidence: "Trivy action pinned at v0.36.0 with exit-code 1 and severity CRITICAL,HIGH."
+decisions:
+  - "Kept dependency-review present and enforced when supported; fail-closed on unsupported/unreadable capability state."
+blockers: []
+risks:
+  - "Remote CI validation still required to confirm runtime marketplace resolution."
+followups: []

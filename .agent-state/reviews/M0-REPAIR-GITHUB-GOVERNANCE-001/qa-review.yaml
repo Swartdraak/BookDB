@@ -1,0 +1,23 @@
+schema_version: "1.0"
+review_id: review-M0-REPAIR-GITHUB-GOVERNANCE-001-qa
+task_id: M0-REPAIR-GITHUB-GOVERNANCE-001
+reviewer_agent: qa-reviewer
+review_type: QA_REVIEW
+result: APPROVE
+scope:
+  - .agent-state/tasks/M0-REPAIR-GITHUB-GOVERNANCE-001.yaml
+  - .agent-state/leases/lease-M0-REPAIR-GITHUB-GOVERNANCE-001.yaml
+  - .agent-state/handoffs/M0-REPAIR-GITHUB-GOVERNANCE-001/handoff.yaml
+  - .github/workflows/agent-governance.yml
+checks:
+  - name: scope compliance
+    status: PASS
+    evidence: "Only workflow-path change was performed within lease bounds."
+  - name: single active governance workflow
+    status: PASS
+    evidence: "Duplicate active workflow removed; canonical agent-governance.yml retained."
+  - name: validator and yaml checks
+    status: PASS
+    evidence: "python3 tools/validate_agent_kit.py passed and workflow YAML parsed successfully."
+findings: []
+notes: "Approved governance workflow cleanup."

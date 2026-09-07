@@ -1,0 +1,17 @@
+version: 1
+workflow_id: release
+sequence:
+  - MILESTONE_GATE
+  - SOURCE_POLICY_DUE_REVIEW
+  - SECURITY_GATE
+  - MIGRATION_REHEARSAL
+  - DATA_QUALITY_GATE
+  - HA_FAILURE_GATE
+  - PERFORMANCE_GATE
+  - BUILD_ARTIFACTS
+  - SBOM_SIGN
+  - SMOKE
+  - HUMAN_RELEASE_APPROVAL
+  - PUBLISH
+hard_gate:
+  human_release_approval: true

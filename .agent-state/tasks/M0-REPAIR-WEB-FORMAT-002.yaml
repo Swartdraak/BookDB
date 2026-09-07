@@ -1,0 +1,28 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-WEB-FORMAT-002
+title: Resolve remaining WebUI formatting failures
+task_type: REPAIR
+state: READY_TO_LEASE
+objective: Make WebUI formatting checks pass in clean CI-equivalent conditions without changing application behavior.
+in_scope:
+  - web/**
+out_of_scope:
+  - internal/**
+  - .github/**
+  - docs/**
+  - .agent-state/**
+assigned_agent: frontend
+dependencies:
+  - M0-REPAIR-WEB-FORMAT-001
+base_commit: f3bdc902f3d26842b7a916866840d5e2d7f0e8f9
+acceptance_criteria:
+  - npm run format passes in web.
+  - npm run typecheck, npm run lint, npm run test, and npm run build pass in web.
+  - Only formatting/no-behavioral changes are introduced.
+verification:
+  - command: cd web && npm ci --no-audit --no-fund --ignore-scripts && npm run format && npm run typecheck && npm run lint && npm run test && npm run build
+    expected: pass
+required_reviewers:
+  - qa-reviewer
+  - security-reviewer
+notes: This task addresses aggregate verification failure discovered in clean integration worktree.

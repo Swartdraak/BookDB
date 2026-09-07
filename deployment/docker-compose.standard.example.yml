@@ -1,0 +1,97 @@
+services:
+  api:
+    image: ghcr.io/OWNER/bookdb:latest
+    command: ["api"]
+    environment:
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb
+      BOOKDB_NATS_URL: nats://nats:4222
+      BOOKDB_VALKEY_URL: redis://valkey:6379/0
+      BOOKDB_OPENSEARCH_URL: http://opensearch:9200
+      BOOKDB_S3_ENDPOINT: http://seaweed-s3:8333
+    ports: ["8080:8080"]
+    depends_on: [pgbouncer, nats, valkey, opensearch, seaweed-s3]
+
+  scheduler:
+    image: ghcr.io/OWNER/bookdb:latest
+    command: ["scheduler"]
+    environment:
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb
+      BOOKDB_NATS_URL: nats://nats:4222
+
+  worker-ingest:
+    image: ghcr.io/OWNER/bookdb:latest
+    command: ["worker", "ingest"]
+    environment:
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb
+      BOOKDB_NATS_URL: nats://nats:4222
+      BOOKDB_S3_ENDPOINT: http://seaweed-s3:8333
+
+  worker-reconcile:
+    image: ghcr.io/OWNER/bookdb:latest
+    command: ["worker", "reconcile"]
+    environment:
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb
+      BOOKDB_NATS_URL: nats://nats:4222
+
+  worker-index:
+    image: ghcr.io/OWNER/bookdb:latest
+    command: ["worker", "index"]
+    environment:
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb
+      BOOKDB_NATS_URL: nats://nats:4222
+      BOOKDB_OPENSEARCH_URL: http://opensearch:9200
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: bookdb
+      POSTGRES_USER: bookdb
+      POSTGRES_PASSWORD: bookdb
+    volumes: [postgres_data:/var/lib/postgresql/data]
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    depends_on: [postgres]
+    # Example only. Production should pin reviewed images and configuration.
+
+  nats:
+    image: nats:2
+    command: ["-js", "-sd", "/data"]
+    volumes: [nats_data:/data]
+
+  valkey:
+    image: valkey/valkey:9
+    volumes: [valkey_data:/data]
+
+  opensearch:
+    image: opensearchproject/opensearch:3
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+    volumes: [opensearch_data:/usr/share/opensearch/data]
+
+  seaweed-master:
+    image: chrislusf/seaweedfs:latest
+    command: "master -ip=seaweed-master"
+
+  seaweed-volume:
+    image: chrislusf/seaweedfs:latest
+    command: "volume -mserver=seaweed-master:9333 -dir=/data"
+    volumes: [seaweed_data:/data]
+
+  seaweed-filer:
+    image: chrislusf/seaweedfs:latest
+    command: "filer -master=seaweed-master:9333"
+    depends_on: [seaweed-master, seaweed-volume]
+
+  seaweed-s3:
+    image: chrislusf/seaweedfs:latest
+    command: "s3 -filer=seaweed-filer:8888 -port=8333"
+    depends_on: [seaweed-filer]
+
+volumes:
+  postgres_data:
+  nats_data:
+  valkey_data:
+  opensearch_data:
+  seaweed_data:

@@ -1,0 +1,28 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-GOVERNANCE-WORKFLOW-002
+title: Repair authority lease CI validation base semantics
+task_type: REPAIR
+state: VERIFYING
+objective: Update Agent Governance workflow lease validation to evaluate each lease against its own base_commit context and avoid invalid global diff violations on unrelated files.
+in_scope:
+  - .github/workflows/agent-governance.yml
+out_of_scope:
+  - internal/**
+  - web/**
+  - docs/**
+  - .agent-state/**
+assigned_agent: devops-release
+dependencies:
+  - M0-REPAIR-GITHUB-GOVERNANCE-001
+base_commit: f5fab4b91420f3c03ae889df8d707d201915119d
+acceptance_criteria:
+  - Lease diff validation in CI no longer compares lease allowlist against unrelated full PR delta.
+  - Task and lease schema validation remains strict.
+  - Governance workflow YAML parses and workflow still enforces contract checks.
+verification:
+  - command: python3 -c "from pathlib import Path; import yaml; yaml.safe_load(Path('.github/workflows/agent-governance.yml').read_text(encoding='utf-8')); print('workflow_yaml_ok')"
+    expected: workflow_yaml_ok
+required_reviewers:
+  - qa-reviewer
+  - security-reviewer
+notes: Governance workflow semantics repair only.

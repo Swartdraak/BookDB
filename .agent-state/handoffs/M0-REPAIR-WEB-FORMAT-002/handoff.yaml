@@ -1,0 +1,58 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-WEB-FORMAT-002
+agent_id: frontend
+lease_id: lease-M0-REPAIR-WEB-FORMAT-002-001
+result: COMPLETE
+summary: Applied canonical Prettier formatting across WebUI sources and config so CI format checks pass without behavioral changes.
+changed_files:
+  - web/eslint.config.js
+  - web/index.html
+  - web/package.json
+  - web/prettier.config.cjs
+  - web/src/app/App.tsx
+  - web/src/app/layouts/AppShell.tsx
+  - web/src/app/navigation.ts
+  - web/src/app/pages/NotFoundPage.tsx
+  - web/src/app/pages/OverviewPage.tsx
+  - web/src/app/pages/SettingsPage.tsx
+  - web/src/app/pages/WorkspacePage.tsx
+  - web/src/app/routes.test.tsx
+  - web/src/app/routes.tsx
+  - web/src/main.tsx
+  - web/src/styles/global.css
+  - web/src/test/setup.ts
+  - web/src/vite-env.d.ts
+  - web/tsconfig.json
+  - web/vite.config.ts
+  - web/vitest.config.ts
+commits:
+  - 889e2bd8e55faffe2ebf9e1a284dacf67dafb1e6
+commands_run:
+  - cd web && npm ci --no-audit --no-fund --ignore-scripts
+  - cd web && npm run format
+  - cd web && npm run typecheck
+  - cd web && npm run lint
+  - cd web && npm run test
+  - cd web && npm run build
+verification_results:
+  - check: npm run format
+    status: PASS
+    evidence: "All matched files use Prettier code style."
+  - check: npm run typecheck
+    status: PASS
+    evidence: "tsc --noEmit succeeded."
+  - check: npm run lint
+    status: PASS
+    evidence: "ESLint completed successfully."
+  - check: npm run test
+    status: PASS
+    evidence: "Vitest passed (1 file, 2 tests)."
+  - check: npm run build
+    status: PASS
+    evidence: "Vite build succeeded."
+decisions:
+  - "Restricted repair to formatting-only updates across web/**."
+blockers: []
+risks:
+  - "No behavioral changes expected; runtime parity depends on existing test coverage depth."
+followups: []

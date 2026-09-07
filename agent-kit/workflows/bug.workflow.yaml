@@ -1,0 +1,18 @@
+version: 1
+workflow_id: bug
+sequence:
+  - TRIAGE
+  - REPRODUCE_ASSIGNMENT
+  - ROOT_CAUSE_ASSIGNMENT
+  - REPAIR_TASK
+  - HANDOFF
+  - REVIEW
+  - INTEGRATE
+  - REGRESSION_VERIFY
+rules:
+  destructive_data_repair:
+    require: [bibliographic-domain, database, qa-reviewer]
+  data_quality_bug:
+    preserve_evidence: true
+  orchestrator_fix:
+    allowed: false

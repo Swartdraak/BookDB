@@ -1,0 +1,9 @@
+version: 1
+workflow_id: reconciliation-change
+sequence:
+  - DOMAIN_INHERITANCE_REVIEW
+  - SOURCE_ELIGIBILITY_REVIEW_IF_NEEDED
+  - RECONCILIATION_IMPLEMENTATION
+  - GOLD_CORPUS
+  - QA_REVIEW
+  - INTEGRATE

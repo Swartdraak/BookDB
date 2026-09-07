@@ -1,0 +1,131 @@
+name: Security Supply Chain
+
+on:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect dependency graph availability
+        id: dep-graph
+        uses: actions/github-script@v7
+        env:
+          ALLOW_DEPENDENCY_REVIEW_UNAVAILABLE: ${{ vars.ALLOW_DEPENDENCY_REVIEW_UNAVAILABLE }}
+        with:
+          script: |
+            let capability = "unavailable";
+            let reason = "Dependency graph capability was not detected.";
+            const allowUnavailable = (process.env.ALLOW_DEPENDENCY_REVIEW_UNAVAILABLE || "").toLowerCase() === "true";
+            try {
+              const { data } = await github.rest.repos.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+              const status = data?.security_and_analysis?.dependency_graph?.status;
+              core.info(`dependency_graph.status=${status ?? "unknown"}`);
+              if (status === "enabled") {
+                capability = "enabled";
+                reason = "Dependency graph capability is enabled.";
+              } else if (status === "disabled") {
+                capability = "disabled";
+                reason = "Dependency graph is explicitly disabled in repository settings.";
+              } else {
+                capability = "unavailable";
+                reason = `Dependency graph status is not usable at runtime (status=${status ?? "unknown"}).`;
+              }
+            } catch (error) {
+              capability = "unavailable";
+              reason = `Could not determine dependency graph status from API (${error.message}).`;
+            }
+
+            core.setOutput("capability", capability);
+            core.setOutput("reason", reason);
+            core.setOutput("allow_unavailable", allowUnavailable ? "true" : "false");
+
+            await core.summary
+              .addHeading("Dependency review capability probe")
+              .addRaw(`capability: ${capability}\n`)
+              .addRaw(`reason: ${reason}\n`)
+              .addRaw(`allow_unavailable: ${allowUnavailable ? "true" : "false"}\n`)
+              .write();
+
+            if (capability === "disabled") {
+              core.setFailed("Dependency graph must be enabled to enforce dependency review. Enable it in repository Settings > Security & analysis, then re-run this workflow.");
+            } else if (capability === "unavailable") {
+              if (allowUnavailable) {
+                core.warning(`Dependency review is skipped because dependency graph capability is unavailable and ALLOW_DEPENDENCY_REVIEW_UNAVAILABLE=true. ${reason}`);
+              } else {
+                core.setFailed(`Dependency graph capability is unavailable. Failing closed to prevent bypass. ${reason} Set repository variable ALLOW_DEPENDENCY_REVIEW_UNAVAILABLE=true only as an auditable temporary exception.`);
+              }
+            }
+
+      - name: Dependency review
+        if: steps.dep-graph.outputs.capability == 'enabled'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          license-check: true
+
+      - name: Dependency review capability audit
+        if: always() && steps.dep-graph.outputs.capability != 'enabled'
+        run: |
+          echo "dependency_review_capability=${{ steps.dep-graph.outputs.capability }}"
+          echo "dependency_review_reason=${{ steps.dep-graph.outputs.reason }}"
+          echo "dependency_review_allow_unavailable=${{ steps.dep-graph.outputs.allow_unavailable }}"
+          if [ "${{ steps.dep-graph.outputs.allow_unavailable }}" = "true" ]; then
+            echo "Dependency review was skipped by an explicit temporary exception."
+            echo "Remove ALLOW_DEPENDENCY_REVIEW_UNAVAILABLE after restoring dependency graph visibility."
+          else
+            echo "Dependency review remains blocked because dependency graph capability is unavailable."
+          fi
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+
+  sbom-and-image-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build devcontainer image
+        run: docker build -f .devcontainer/Dockerfile -t bookdb-devcontainer:${{ github.sha }} .
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: bookdb-devcontainer:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: bookdb-devcontainer:${{ github.sha }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true

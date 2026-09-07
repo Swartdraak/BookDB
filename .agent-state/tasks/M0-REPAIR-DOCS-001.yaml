@@ -1,0 +1,26 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-DOCS-001
+title: Repair M0 documentation references
+task_type: REPAIR
+state: READY_TO_LEASE
+objective: Fix broken canonical path references and remove M1 material from M0 docs without changing product scope.
+in_scope:
+  - README.md
+  - docs/**
+  - project-management/**
+out_of_scope:
+  - application code
+assigned_agent: documentation-writer
+dependencies:
+  - M0-CERT-DOCS-001
+base_commit: c0f14f25ebad3ed0e947f677198ba6cbdc8e898f
+acceptance_criteria:
+  - Broken canonical path references are corrected.
+  - M1 language is removed from M0 docs where it is not appropriate.
+  - Canonical docs remain truthful to the current state.
+verification:
+  - command: git diff --check
+    expected: pass
+required_reviewers:
+  - documentation-reviewer
+notes: Documentation repair only.

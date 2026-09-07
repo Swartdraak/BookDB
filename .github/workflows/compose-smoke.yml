@@ -1,0 +1,23 @@
+name: Compose Smoke
+
+on:
+  pull_request:
+    paths:
+      - "compose.yaml"
+      - "deployment/**"
+      - "scripts/dev/**"
+      - "Makefile"
+      - ".devcontainer/**"
+  push:
+    branches:
+      - feat/m0-repository-foundation
+      - main
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compose smoke test
+        run: bash scripts/dev/compose-smoke.sh

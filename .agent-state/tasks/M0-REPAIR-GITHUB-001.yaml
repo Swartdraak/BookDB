@@ -1,0 +1,34 @@
+schema_version: "1.0"
+task_id: M0-REPAIR-GITHUB-001
+title: Repair governance workflow gating
+task_type: REPAIR
+state: READY_TO_LEASE
+objective: Repair the failing GitHub validation loop by fixing the malformed task artifact and the incompatible security workflow actions that are breaking the PR checks.
+in_scope:
+  - .agent-state/tasks/M0-RECOVERY-GOV-001.yaml
+  - .github/workflows/agent-governance.yml
+  - .github/workflows/security-supply-chain.yml
+  - .github/CODEOWNERS
+  - .github/CODEOWNERS.example
+  - .github/dependabot.yml
+out_of_scope:
+  - application code
+assigned_agent: devops-release
+dependencies:
+  - M0-RECOVERY-GITHUB-001
+base_commit: c0f14f25ebad3ed0e947f677198ba6cbdc8e898f
+acceptance_criteria:
+  - The malformed task artifact parses cleanly with PyYAML and the governance validator passes.
+  - The GitHub security workflow uses supported, resolvable action versions and valid token configuration for pull requests.
+  - The repo governance validation and security supply-chain workflows pass in local reproduction and on the PR branch.
+verification:
+  - command: python tools/validate_agent_kit.py
+    expected: pass
+  - command: python3 -c "import yaml; from pathlib import Path; [yaml.safe_load(p.read_text(encoding='utf-8')) for p in sorted(Path('.agent-state/tasks').glob('*.yaml'))]; print('yaml_ok')"
+    expected: yaml_ok
+  - command: python3 -c "import os, subprocess; env = os.environ.copy(); env['GITHUB_TOKEN'] = 'placeholder'; subprocess.run(['python', 'tools/validate_agent_kit.py'], check=True, env=env)"
+    expected: pass
+required_reviewers:
+  - qa-reviewer
+  - security-reviewer
+notes: Governance repair only.
