@@ -21,7 +21,9 @@ def gh(args, payload=None):
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 def pages(path):
-    result = gh(['api', path, '--paginate', '--slurp'])
+    result = gh(['api', path, '--paginate'])
+    if isinstance(result, list):
+        return result
     return [entry for page in result for entry in page]
 
 def issue_body(stage, code, scope):
