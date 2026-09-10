@@ -1,8 +1,8 @@
 ---
-name: Metadata quality or source issue
+name: Bug report
 about: Track one observable outcome and its evidence
 title: ""
-labels: "type:data-quality"
+labels: "type:bug"
 ---
 
 ## Outcome or observed problem

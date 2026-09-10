@@ -1,9 +1,0 @@
-schema_version: "1.0"
-review_id: review-M0-REPAIR-GOVERNANCE-WORKFLOW-002-qa
-status: APPROVED
-task_id: M0-REPAIR-GOVERNANCE-WORKFLOW-002
-lease_id: lease-M0-REPAIR-GOVERNANCE-WORKFLOW-002-001
-reviewer: qa-reviewer
-summary: Governance workflow YAML parses and the handoff-aware semantics are plausible.
-notes:
-  - Approved after local YAML parse validation.

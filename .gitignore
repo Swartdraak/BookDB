@@ -1,83 +1,8 @@
-# BookDB .gitignore
-#
-# Go
-bin/
-dist/
-*.test
-*.out
-coverage.*
-go.work.sum
-vendor/
-
 # Build output
-bookdb
-bookdb.exe
+/bookdb
+/bookdb.exe
 *.exe
 out/
 
-# Node / WebUI
-web/node_modules/**
-web/dist/**
-web/coverage/**
-web/.vite/**
-web/.turbo/**
-web/playwright-report/**
-web/test-results/**
-*.tsbuildinfo
-
-# Env / local secret material (NEVER commit real credentials)
-.env
-.env.local
-.env.*.local
-*.secret
-*.pem
-*.key
-*.key.*
-*.p12
-*.pfx
-*.jks
-.secrets/
-secrets/
-
-# Tool caches
-.go-cache/
-.gocache/
-.npm/
-.pnpm-store/
-
-# OS noise
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Editors and IDEs
-.idea/
-*.swp
-*~
-.vs/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-!.vscode/tasks.json
-
-# Local artifacts
-logs/
-data/
-tmp/
-artifacts/
-
-# Temporary recovery and sandbox paths
-# Durable governance state under .agent-state/ (tasks, leases, handoffs, reviews,
-# ledger, objectives, integration, escalations) is tracked normally in Git.
-# Only ephemeral/runtime state is ignored.
-.agent-state/runtime/
-.agent-state/tmp/
-.agent-state/cache/
-.agent-state/logs/
-# Historical nested-worktree path. Git worktrees MUST NOT be created here anymore;
-# ISOLATED worktrees live outside the canonical repository (see WORKSPACE_POLICY.md).
-.agent-state/worktrees/
-.codex/
-
-# Compose local volumes
-compose-data/
+# Local acceptance reports and scratch (never committed)
+.local/

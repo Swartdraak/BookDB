@@ -3,70 +3,70 @@ name: CI
 on:
   pull_request:
   push:
-    branches:
-      - feat/m0-repository-foundation
-      - main
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   go:
     name: Go checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
-
-      - name: Download modules
-        run: make setup
-
-      - name: Format check
-        run: make fmt-check
-
-      - name: Lint
-        run: make lint
-
-      - name: Test
-        run: make test
-
-      - name: Build
-        run: make build
-
-      - name: OpenAPI validation
-        run: make openapi-validate
+      - run: make setup
+      - run: make fmt-check
+      - run: make lint
+      - run: make test
+      - run: make build
+      - run: make openapi-validate
+      - name: Build actual application entry point
+        run: go build -o /tmp/bookdb ./cmd/bookdb
 
   webui:
     name: WebUI checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: web/package-lock.json
+      - run: npm --prefix web ci
+      - run: npm --prefix web run format
+      - run: npm --prefix web run typecheck
+      - run: npm --prefix web run lint
+      - run: npm --prefix web run test
+      - run: npm --prefix web run build
 
-      - name: Install dependencies
-        run: cd web && npm ci
+  application-image:
+    name: Application image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build runtime image (S0 must repair missing entry point)
+        run: docker build --tag bookdb-ci:${{ github.sha }} .
 
-      - name: Format
-        run: cd web && npm run format
-
-      - name: Typecheck
-        run: cd web && npm run typecheck
-
-      - name: Lint
-        run: cd web && npm run lint
-
-      - name: Test
-        run: cd web && npm run test
-
-      - name: Build
-        run: cd web && npm run build
+  project-docs:
+    name: Project docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 scripts/project/check_docs.py

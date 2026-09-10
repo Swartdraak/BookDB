@@ -1,7 +1,3 @@
-# Codex — BookDB
+# BookDB instruction bridge
 
-Canonical policy: `../agent-kit/constitution/AGENT_CONSTITUTION.md`.
-
-Do not make repository changes without the role-specific instructions and, for execution work, an active TaskPacket + AuthorityLease.
-
-The Orchestrator is a control-plane agent and MUST NOT implement application code.
+Read the root `../AGENTS.md` and `BOOKDB_PROJECT.md`. No separate agent constitution applies. The current owner-authorized workflow permits sequential primary implementation and forbids automatic worktrees/repository copies.

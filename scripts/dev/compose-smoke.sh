@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 
 cleanup() {
-	docker compose -f compose.yaml down -v --remove-orphans >/dev/null 2>&1 || true
+	docker compose -f compose.yaml down --remove-orphans >/dev/null 2>&1 || true
 }
 
 trap cleanup EXIT
