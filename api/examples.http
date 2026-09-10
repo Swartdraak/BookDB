@@ -1,0 +1,73 @@
+### BookDB S1 API — Human-runnable HTTP examples
+###
+### Usage:
+###   1. Start the dev stack: make compose-app-up
+###   2. Create an API key (one-time local admin command):
+###        BOOKDB_DATABASE_URL="postgres://bookdb:bookdb@127.0.0.1:5432/bookdb?sslmode=disable" \
+###        go run ./cmd/bookdb key create --name "dev-key" --scope "catalog:read"
+###      Note the secret (shown once).
+###   3. Replace {{api_key}} below with your secret.
+###   4. Open this file in JetBrains HTTP Client or use curl.
+
+@base_url = http://localhost:8080/api/v1
+@api_key = REPLACE_WITH_YOUR_SECRET
+
+### Get a canonical work (Dune)
+GET {{base_url}}/works/11111111-1111-4111-8111-111111111111
+X-API-Key: {{api_key}}
+
+### List editions for Dune
+GET {{base_url}}/works/11111111-1111-4111-8111-111111111111/editions
+X-API-Key: {{api_key}}
+
+### Get an expression
+GET {{base_url}}/expressions/22222222-2222-4222-8222-222222222221
+X-API-Key: {{api_key}}
+
+### Get an edition (print, has ISBN)
+GET {{base_url}}/editions/33333333-3333-4333-8333-333333333331
+X-API-Key: {{api_key}}
+
+### Get an edition (audio, no ISBN)
+GET {{base_url}}/editions/33333333-3333-4333-8333-333333333333
+X-API-Key: {{api_key}}
+
+### Get a person (Frank Herbert)
+GET {{base_url}}/people/44444444-4444-4444-8444-444444444441
+X-API-Key: {{api_key}}
+
+### List works for a person
+GET {{base_url}}/people/44444444-4444-4444-8444-444444444441/works
+X-API-Key: {{api_key}}
+
+### Get an organization (Ace Books)
+GET {{base_url}}/organizations/55555555-5555-4555-8555-555555555551
+X-API-Key: {{api_key}}
+
+### Resolve a unique ISBN (ebook)
+GET {{base_url}}/resolve?namespace=isbn13&value=9780441013597
+X-API-Key: {{api_key}}
+
+### Resolve an ambiguous ISBN (claimed by two editions)
+GET {{base_url}}/resolve?namespace=isbn13&value=9780441172719
+X-API-Key: {{api_key}}
+
+### Resolve a work-level identifier (Open Library)
+GET {{base_url}}/resolve?namespace=openlibrary&value=OL1234567W
+X-API-Key: {{api_key}}
+
+### Resolve an unknown identifier (not_found)
+GET {{base_url}}/resolve?namespace=isbn13&value=9999999999999
+X-API-Key: {{api_key}}
+
+### Missing key (401)
+GET {{base_url}}/works/11111111-1111-4111-8111-111111111111
+
+### Invalid key (401)
+GET {{base_url}}/works/11111111-1111-4111-8111-111111111111
+X-API-Key: not-a-real-key
+
+### Unknown work (404)
+GET {{base_url}}/works/00000000-0000-4000-8000-000000000000
+X-API-Key: {{api_key}}
+
