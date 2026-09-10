@@ -1,0 +1,378 @@
+[
+  {
+    "id": "S0",
+    "name": "Adopt the package and run the preserved application",
+    "requires": [],
+    "gate": false,
+    "requirements": [
+      "BDB-001",
+      "BDB-018"
+    ],
+    "dataset": "Existing migrations in an empty disposable PostgreSQL database; no real catalog needed.",
+    "deliver": "Apply the exact governance replacement, wire the missing cmd/bookdb entry point and real database/migration connection, make ordinary shutdown preserve volumes, and build/run the application image. Preserve existing Go/Web tests and working adapters. Establish GitHub Issues/Milestones/Project and essential CI without waiting for optional Wiki or account permissions.",
+    "tests": [
+      "Run existing Go/Web checks and the actual application Docker build; go build ./... alone is insufficient.",
+      "Start the app with documented dev configuration; GET /health/live returns 200, database-backed readiness returns 200 only after a successful query, and a stopped database causes readiness 503 while liveness stays 200.",
+      "Run migrations twice; the second run is a no-op. Insert a disposable sentinel row, stop/restart using the ordinary command, and prove the sentinel remains.",
+      "Check git worktree list: only the canonical checkout; no active legacy agents/leases/validator references. Verify one issue-linked PR contains adoption and the observable runtime repair."
+    ],
+    "human": "Follow the fresh-install commands, open the health URL, inspect the sentinel in DataGrip, restart and confirm it remains. This procedure is human-runnable but does not require a human gate.",
+    "done": "An executable application and honest baseline report exist. Any pre-existing failures are reproduced and tracked; S0 cannot pass with a missing runtime entry point.",
+    "issues": [
+      [
+        "ADOPT-RUNTIME",
+        "Replace legacy governance and prove a runnable preserved baseline",
+        "Implement the migration runbook and S0 runtime tests in one bounded delivery PR."
+      ],
+      [
+        "GITHUB",
+        "Configure native GitHub lifecycle tooling",
+        "Apply idempotent labels/milestones/issues setup, set the Project fields/views, establish required checks after successful runs and record any account-level capability blocker."
+      ]
+    ]
+  },
+  {
+    "id": "S1",
+    "name": "Key-protected canonical catalog API",
+    "requires": [
+      "S0"
+    ],
+    "gate": false,
+    "requirements": [
+      "BDB-002",
+      "BDB-003",
+      "BDB-007",
+      "BDB-014"
+    ],
+    "dataset": "Small synthetic fixture catalog with fixed UUIDs: print/ebook/audio variants, two same-name people, translation, missing ISBN and conflicting identifier claims.",
+    "deliver": "Extend the existing schema through forward migrations; implement real catalog persistence, initial work/edition/person APIs, namespace-aware resolve, CLI key bootstrap and shared Valkey quotas. Expand the OpenAPI outline to the implemented operations. This is the first machine-consumable catalog slice.",
+    "tests": [
+      "GET catalog operations without a key returns 401; valid read key returns 200; invalid/expired/revoked keys return 401 and insufficient scope returns 403.",
+      "Resolve fixture identifiers and UUIDs; ambiguous identifiers return explicit candidates without merging records. Unknown IDs return 404.",
+      "Load fixtures twice without changing entity IDs/counts. Upgrade a populated baseline database and verify retained rows/relationships.",
+      "Exceed a small test quota and assert 429 plus Retry-After. Alternate requests between two API replicas and verify the shared limit. Stop Valkey and assert documented 503.",
+      "Validate response bodies against OpenAPI and assert key values never appear in response metadata or captured logs."
+    ],
+    "human": "Use a terminal HTTP client or JetBrains HTTP file with a locally stored key, inspect a work and its editions, revoke the key, and confirm the request fails. Inspect relationships in DataGrip.",
+    "done": "Protected API reads, migration safety, identifier ambiguity and rate-limit behavior are demonstrated with real services.",
+    "issues": [
+      [
+        "CATALOG",
+        "Evolve schema and implement fixture-backed canonical reads",
+        "Preserve baseline data and implement typed relationships/identifier assertions required by S1."
+      ],
+      [
+        "KEYS",
+        "Implement API keys and shared quotas",
+        "Deliver key creation/revocation and middleware with two-replica quota tests."
+      ],
+      [
+        "CONTRACT",
+        "Publish executable API contract examples",
+        "Contract-test all S1 operations and add repeatable human HTTP examples."
+      ]
+    ]
+  },
+  {
+    "id": "S2",
+    "name": "First real-source catalog in the WebUI",
+    "requires": [
+      "S1"
+    ],
+    "gate": true,
+    "requirements": [
+      "BDB-004",
+      "BDB-006",
+      "BDB-011"
+    ],
+    "dataset": "Pinned subset of an Open Library bibliographic dump: at least 1,000 works with associated editions/authors, plus deliberately malformed local parser fixtures. Keep source snapshot hash and selection method.",
+    "deliver": "Implement the approved bibliographic source policy, bounded streaming importer, S3 manifest storage, NATS-backed jobs/outbox projection, manual trigger and monthly snapshot schedule. Add minimal local bootstrap-admin login and secure browser sessions for the first private WebUI; full account management and OIDC follow in S4. Make actual imported records searchable in OpenSearch and browsable through a basic polished catalog UI. Use one-time local administration commands until S4 admin screens exist; never expose unauthenticated admin mutations.",
+    "tests": [
+      "Run source import to completion; accepted + unchanged + rejected + quarantined equals records examined. Reimport produces no duplicate entities or duplicate unchanged publication events.",
+      "Interrupt after a committed chunk; resume and compare final IDs/counts with an uninterrupted run.",
+      "Find a known imported title and author via API and UI, open an edition and follow provenance to its source record. No mock result is acceptable.",
+      "Take the upstream source offline; existing catalog search and lookup still work. Pause/resume a job and show checkpoint/progress.",
+      "Test search loading/empty/error states, Unicode input and keyboard navigation. Verify the scheduled occurrence key prevents duplicate jobs."
+    ],
+    "human": "Fresh-install or upgrade using the runbook, launch the bounded source job, find five named records from its manifest in the WebUI, inspect an edition and source provenance, then test the API key path.",
+    "done": "The first real-data product is usable. Prepare the exact commit, URLs, credentials setup, fixture list, expected results and reset instructions; stop for human acceptance before S3.",
+    "issues": [
+      [
+        "IMPORT",
+        "Deliver resumable Open Library snapshot ingestion",
+        "Use the approved field subset, durable job state, source manifests and idempotency."
+      ],
+      [
+        "SEARCH",
+        "Project canonical catalog into search",
+        "Deliver transactional outbox, NATS redelivery handling and OpenSearch reads."
+      ],
+      [
+        "BROWSE",
+        "Deliver real-data search and detail UI",
+        "Implement minimal local-admin session access plus search/results/work/edition navigation with honest empty/error states."
+      ],
+      [
+        "ACCEPT",
+        "Human acceptance of the first real-data catalog",
+        "Run the S2 human procedure; an AI agent may prepare evidence but cannot close this gate."
+      ]
+    ]
+  },
+  {
+    "id": "S3",
+    "name": "Cross-source reconciliation and durable identity",
+    "requires": [
+      "S2"
+    ],
+    "gate": false,
+    "requirements": [
+      "BDB-005",
+      "BDB-012",
+      "BDB-015",
+      "BDB-017"
+    ],
+    "dataset": "Pinned Wikidata subset linked to S2 plus a labelled identity corpus of at least 1,000 pairs, including hard negatives and source disagreement.",
+    "deliver": "Add a second independent source, field-level selection/provenance, duplicate candidate review data, canonical revisions, merge/split operations and change feed. Cross-source ingestion must improve evidence while preserving distinct publications and contributor identities.",
+    "tests": [
+      "Run held-out identity benchmark: automatic-match precision ≥99.5%, zero false merges on hard negatives; publish counts, recall and uncertainty.",
+      "Replay sources in both orders and replay old revisions; assert the same expected canonical outcomes and no overwrite by older evidence.",
+      "Merge two fixture duplicates, resolve the old ID, then perform a version-checked split. Assert no redirect cycles and all affected relationships/events survive.",
+      "Simulate crash after DB commit before NATS acknowledgement; redelivery creates no duplicate side effects. Rebuild a projection from durable state.",
+      "Consume changes from a cursor; disconnect/reconnect; assert monotonic committed publication order and no skipped events under concurrent transactions."
+    ],
+    "human": "Inspect conflicting claims for a named fixture, compare the selected value with its evidence, run a merge/split in the disposable catalog and query both old and new IDs.",
+    "done": "Identity operations and provenance are explainable and reproducible, with durable client-visible changes.",
+    "issues": [
+      [
+        "CORRELATE",
+        "Add Wikidata evidence and deterministic reconciliation",
+        "Implement field rules, hard contradiction gates and a labelled benchmark."
+      ],
+      [
+        "IDENTITY",
+        "Implement revision-safe merge and split",
+        "Preserve redirects, source assignments and typed relationships."
+      ],
+      [
+        "CHANGES",
+        "Deliver committed-order change feed and replay",
+        "Ensure change cursors cannot skip a transaction that commits late; implement expiry/resync behavior."
+      ]
+    ]
+  },
+  {
+    "id": "S4",
+    "name": "Accounts, moderation and administrator controls",
+    "requires": [
+      "S3"
+    ],
+    "gate": false,
+    "requirements": [
+      "BDB-007",
+      "BDB-008",
+      "BDB-009",
+      "BDB-010",
+      "BDB-011"
+    ],
+    "dataset": "Disposable local OIDC provider; admin, contributor, reader and API client accounts; proposals including private text and a private cover.",
+    "deliver": "Implement local authentication, OIDC, session security, RBAC, own-key management and admin source/job controls. Deliver proposal submission, comparison, revision-bound approval/rejection and publication. Public source ingestion and private user proposals follow separate eligibility rules.",
+    "tests": [
+      "Test local login/logout/reset/disabled user and OIDC issuer/audience/state/nonce/PKCE/account-linking negative cases.",
+      "A contributor submits a correction; it is absent from public API/search/export/asset access/change feed until Administrator approval.",
+      "Non-admin approval attempt returns 403; stale canonical or proposal revision returns 409/412 with no partial publication.",
+      "Approval creates one published revision/event and visible approved change. Rejection leaves the public record unchanged. Repeated approval is idempotent or returns a documented conflict.",
+      "Rotate/revoke keys across replicas; test CSRF, session fixation prevention, direct-object access, script content and input limits."
+    ],
+    "human": "Sign in as contributor and admin in separate browser contexts, submit a change, verify privacy, reject one proposal and approve another. Use production OIDC only in the later human acceptance environment.",
+    "done": "Security and moderation workflows pass real integration/E2E tests; human usability/OIDC acceptance is consolidated into S5.",
+    "issues": [
+      [
+        "AUTH",
+        "Complete local/OIDC authentication and session roles",
+        "Replace skeleton-only auth with real flows, bootstrap and account/key UI."
+      ],
+      [
+        "MODERATE",
+        "Implement private proposal review and atomic publication",
+        "Cover private assets, stale versions, role boundaries and audit."
+      ],
+      [
+        "ADMIN",
+        "Deliver source/job administration",
+        "Expose schedules, trigger/pause/resume/quarantine and clear permission boundaries."
+      ]
+    ]
+  },
+  {
+    "id": "S5",
+    "name": "Rich multilingual and multi-format catalog experience",
+    "requires": [
+      "S4"
+    ],
+    "gate": true,
+    "requirements": [
+      "BDB-003",
+      "BDB-005",
+      "BDB-006",
+      "BDB-013",
+      "BDB-017"
+    ],
+    "dataset": "Curated multilingual fixture set with Latin, Hangul, CJK and RTL text; print/ebook/braille/large-print/audio, alternate narrations, abridgment, anthology, omnibus and organization credits. Add one eligible real open audio source or explicitly keep audio coverage gate blocked.",
+    "deliver": "Complete contributor roles, organizations/imprints, series orders, aggregate contents, audio performance fields, eligible covers/portraits, edition comparison and source/quality dashboards. Add DOAB and a verified eligible audio connector where useful. Complete responsive design and accessibility. A source access blocker does not justify fabricated audio metadata.",
+    "tests": [
+      "Assert no loss of Unicode, date precision, unknown values, series positions or contributor role/order through ingest→DB→API→UI.",
+      "Two narrations and an abridgment remain distinct; multi-expression edition contents and publisher/producer/narrator roles round-trip.",
+      "Eligible assets render; disallowed/private assets are absent; asset fetcher rejects private-network redirects and oversized payloads.",
+      "Run E2E journeys at 360/768/1440 px, keyboard checks and automated accessibility scans; capture real screenshots.",
+      "Report known/applicable field completeness by language/format/source rather than one misleading global score."
+    ],
+    "human": "Run all six WebUI journeys, edition comparisons, keyboard/screen-reader and 200% zoom checks, verify language rendering and OIDC with the actual configured provider. Inspect at least ten diverse catalog records for bibliographic correctness.",
+    "done": "A human accepts the complete catalog/moderation experience and real multi-format coverage. Stop here until the gate is explicitly passed.",
+    "issues": [
+      [
+        "FORMATS",
+        "Complete rich format and contributor model",
+        "Add audio/aggregate/accessibility fields and multilingual fixtures using forward migrations."
+      ],
+      [
+        "ASSETS",
+        "Add eligible assets and expanded open sources",
+        "Verify source-specific permissions, implement bounded asset handling and real audio evidence."
+      ],
+      [
+        "UX",
+        "Complete discovery comparison and administration UX",
+        "Meet the full WebUI journeys, responsive/accessibility and quality reporting contract."
+      ],
+      [
+        "ACCEPT",
+        "Human acceptance of catalog quality and WebUI",
+        "Record actual signoff for S5 journeys, real OIDC and representative metadata."
+      ]
+    ]
+  },
+  {
+    "id": "S6",
+    "name": "Bulk operation, recovery and multi-host HA",
+    "requires": [
+      "S5"
+    ],
+    "gate": false,
+    "requirements": [
+      "BDB-004",
+      "BDB-016",
+      "BDB-017"
+    ],
+    "dataset": "Complete selected source snapshot; 100,000-work/500,000-edition reference benchmark and 10× run where resources permit; three independent HA failure domains.",
+    "deliver": "Demonstrate full snapshot accounting, bounded worker memory and horizontal workers, monitored queues and quotas, backup/restore, search rebuild, S3 persistence, database failover and documented deployment profiles. Keep installation usable on one host.",
+    "tests": [
+      "Process the full selected snapshot with pause/restart/backpressure; measure throughput/memory/disk and account for every record.",
+      "Run reference API load for 15 minutes at 20 requests/s; measure p95 lookup ≤250 ms and search ≤750 ms, errors <1%, with cache state and resources recorded.",
+      "Restore DB and object manifests/bytes into a clean environment, compare hashes/counts, replay outbox and rebuild search; meet stated RPO/RTO.",
+      "Kill/partition one failure domain and test PG leader transition, NATS quorum, search replicas and S3 access; no acknowledged canonical data silently lost within declared RPO.",
+      "Kill scheduler/worker mid-chunk, duplicate events and fill a queue; verify bounded retry, backpressure and recovery."
+    ],
+    "human": "An operator can reproduce install/restore/failover from the runbook. Destructive tests target disposable resources only; human deployment validation is consolidated into S8.",
+    "done": "A dated operational report establishes capacity and recovery on named hardware, with all unachieved targets visible as blockers.",
+    "issues": [
+      [
+        "SCALE",
+        "Prove bulk ingestion and API capacity",
+        "Benchmark reference and expanded datasets with bounded resources and truthful reports."
+      ],
+      [
+        "RECOVER",
+        "Implement verified backup restore and projection rebuild",
+        "Restore into a fresh environment and verify source/catalog/asset integrity."
+      ],
+      [
+        "HA",
+        "Demonstrate multi-host reference topology",
+        "Test failure domains/quorum and document measured RPO/RTO."
+      ]
+    ]
+  },
+  {
+    "id": "S7",
+    "name": "Bibliophilarr integration and public developer contract",
+    "requires": [
+      "S6"
+    ],
+    "gate": true,
+    "requirements": [
+      "BDB-012",
+      "BDB-014",
+      "BDB-015"
+    ],
+    "dataset": "Pinned Bibliophilarr revision and BookDB fixture catalog including ebook/audio, merge/split and missing values; existing Bibliophilarr data preserved.",
+    "deliver": "Implement the BookDB provider in a separately authorized Bibliophilarr branch/PR, using its existing interfaces. Publish complete OpenAPI, generated TypeScript client and a tested C# client/provider contract, HTTP examples and integration guide. Support scoped keys, quotas, change feed recovery and identifier migration.",
+    "tests": [
+      "Configure a BookDB base URL/key, search books/authors, resolve ISBN/BookDB UUID and refresh author editions through Bibliophilarr.",
+      "Preserve book/edition/person namespaced IDs across repeated refresh; do not rewrite existing provider IDs as BookDB UUIDs without evidence.",
+      "Test 401/revocation, 429/backoff, BookDB outage, pagination, conditional GET, change cursor expiry, merge/split and null metadata.",
+      "Run a staging migration/dry-run against a backup of representative Bibliophilarr data and verify monitored/downloaded state remains unchanged.",
+      "Validate all implemented OpenAPI operations and ensure examples work without undocumented server behavior."
+    ],
+    "human": "Configure the provider in a disposable Bibliophilarr instance, search/add/refresh one ebook and one audiobook, inspect edition/narrator details, revoke/rotate the key and verify recovery. Approve the integration based on actual use.",
+    "done": "Human accepts the working integration; BookDB does not claim URL-only compatibility with Readarr/Bookshelf unless independently demonstrated.",
+    "issues": [
+      [
+        "PROVIDER",
+        "Implement Bibliophilarr BookDB provider contract",
+        "Coordinate the external repository change under its own governance and branch lifecycle."
+      ],
+      [
+        "SDK",
+        "Publish tested API docs and client examples",
+        "Generate clients, add paging/quota/change-feed examples and compatibility version matrix."
+      ],
+      [
+        "ACCEPT",
+        "Human acceptance of Bibliophilarr integration",
+        "Record the tested revisions of both applications and explicit human result."
+      ]
+    ]
+  },
+  {
+    "id": "S8",
+    "name": "Release candidate and sustainable maintenance",
+    "requires": [
+      "S7"
+    ],
+    "gate": true,
+    "requirements": [
+      "BDB-001",
+      "BDB-016",
+      "BDB-018"
+    ],
+    "dataset": "Clean install, populated previous-stage upgrade and restore environments; exact candidate image digests and source snapshot manifests.",
+    "deliver": "Produce an immutable RC with release notes, known limits, migrations, SBOM, signatures/checksums, source/asset attributions, backup/upgrade instructions and supported configuration. Complete the human install/upgrade/integration acceptance before promoting that tested candidate to GA.",
+    "tests": [
+      "Run all stage automated acceptance suites and the regression/security/contract suite against the candidate.",
+      "Build the actual runtime image and verify pinned dependencies/images; scan the application image, not only the devcontainer.",
+      "Fresh install, upgrade populated data, rotate secrets, restart and restore using the released instructions; verify no default production credentials or public private-service ports.",
+      "Verify artifact hashes/digests, provenance/SBOM, license notices, Wiki/docs release links and GitHub issue/milestone/release consistency.",
+      "Ensure no open critical correctness/security/recovery blockers and no unapproved human gate; known non-blocking limits are published."
+    ],
+    "human": "Perform fresh installation and upgrade using only release documentation, complete catalog/moderation/API/Bibliophilarr checks, and verify a restore. The owner explicitly accepts the tested RC for GA.",
+    "done": "After human acceptance, the agent may publish/promote the exact tested candidate and close the milestone; deploying to unrelated/production hosts is not implied.",
+    "issues": [
+      [
+        "RC",
+        "Assemble and verify immutable release candidate",
+        "Run release acceptance and produce complete operator/developer artifacts."
+      ],
+      [
+        "ACCEPT",
+        "Human release acceptance for GA",
+        "Record actual install/upgrade/restore/integration results and approval of the exact RC."
+      ],
+      [
+        "GA",
+        "Promote accepted candidate and start maintenance",
+        "Publish the accepted artifacts, close the milestone and triage the next patch backlog."
+      ]
+    ]
+  }
+]
