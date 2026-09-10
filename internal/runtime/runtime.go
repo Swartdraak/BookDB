@@ -22,6 +22,7 @@ import (
 	"github.com/bookdb/bookdb/internal/database"
 	"github.com/bookdb/bookdb/internal/health"
 	"github.com/bookdb/bookdb/internal/logging"
+	"github.com/bookdb/bookdb/internal/ratelimit"
 	"github.com/bookdb/bookdb/internal/version"
 )
 
@@ -291,7 +292,8 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 	// S1 key-protected canonical catalog API. Only mounted for the api role
 	// and when a database pool is available.
 	if name == "api" && dbPool != nil {
-		catalogAPI := api.NewServer(dbPool, apiMacKey(cfg))
+		limiter := newRateLimiter(context.Background(), cfg)
+		catalogAPI := api.NewServer(dbPool, apiMacKey(cfg), limiter)
 		mux.Handle("/api/v1/", catalogAPI.Handler())
 	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -487,4 +489,20 @@ func apiMacKey(cfg *config.Config) []byte {
 	}
 	// Development-only fallback. Never use in production.
 	return []byte("bookdb-dev-api-key-mac-key-0000000000")
+}
+
+// newRateLimiter creates a shared Valkey-backed rate limiter for the API.
+// It returns nil when Valkey is not configured or unreachable, which disables
+// rate limiting (the API still works, just without the shared quota).
+func newRateLimiter(ctx context.Context, cfg *config.Config) *ratelimit.Limiter {
+	if strings.TrimSpace(cfg.Valkey.URL) == "" {
+		return nil
+	}
+	client, err := ratelimit.NewValkeyClient(ctx, cfg.Valkey.URL)
+	if err != nil {
+		return nil
+	}
+	limit := 100 // requests per window per key
+	window := time.Minute
+	return ratelimit.New(client, cfg.Valkey.KeyPrefix, limit, window)
 }
