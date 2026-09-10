@@ -81,3 +81,6 @@ artifacts/
 
 # Compose local volumes
 compose-data/
+
+# Local acceptance reports and scratch (never committed)
+.local/

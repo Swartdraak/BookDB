@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/bookdb/bookdb/internal/auth"
 	"github.com/bookdb/bookdb/internal/config"
+	"github.com/bookdb/bookdb/internal/database"
 	"github.com/bookdb/bookdb/internal/health"
 	"github.com/bookdb/bookdb/internal/logging"
 	"github.com/bookdb/bookdb/internal/version"
@@ -124,8 +126,33 @@ func runMigrate(stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	fmt.Fprintln(stderr, "bookdb migrate is intentionally skeletal in M0; database migrations are not wired yet")
-	return 2
+
+	// Migrations run against the direct (non-pooled) DSN so they are not
+	// subject to transaction-mode pooling. Fall back to the pooled DSN when no
+	// direct URL is configured.
+	dsn := cfg.Database.DSNDirect
+	if strings.TrimSpace(dsn) == "" {
+		dsn = cfg.Database.DSN
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	db, err := database.Open(ctx, dsn, cfg.Database.MaxOpenConns, cfg.Database.MaxIdleConns, cfg.Database.ConnMaxLifetime)
+	if err != nil {
+		fmt.Fprintf(stderr, "bookdb migrate: %v\n", err)
+		return 1
+	}
+	defer db.Close()
+
+	report, err := database.RunUp(ctx, db)
+	if err != nil {
+		fmt.Fprintf(stderr, "bookdb migrate: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stderr, "bookdb migrate: current version %q, %d applied, %d pending\n",
+		report.CurrentVersion, len(report.Applied), len(report.Pending))
+	return 0
 }
 
 func runWorker(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -230,7 +257,7 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 	liveRegistry.Register("runtime", health.CheckFunc(func(context.Context) health.Status {
 		return health.StatusOK
 	}), true)
-	dependencyRegistry := newDependencyRegistry(cfg)
+	dependencyRegistry := newDependencyRegistry(cfg, openDatabasePool(context.Background(), cfg))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health/live", func(w http.ResponseWriter, r *http.Request) {
@@ -292,10 +319,10 @@ func writeDependencyHealth(w http.ResponseWriter, registry *health.Registry, ver
 	writeHealthReport(w, report)
 }
 
-func newDependencyRegistry(cfg *config.Config) *health.Registry {
+func newDependencyRegistry(cfg *config.Config, db *sql.DB) *health.Registry {
 	registry := health.NewRegistry()
 	registry.Register("database", health.CheckFunc(func(ctx context.Context) health.Status {
-		return probeEndpoint(ctx, cfg.Database.DSN, "5432")
+		return checkDatabase(ctx, db, cfg.Database.DSN)
 	}), true)
 	registry.Register("nats", health.CheckFunc(func(ctx context.Context) health.Status {
 		return probeEndpoint(ctx, cfg.NATS.URL, "4222")
@@ -310,6 +337,39 @@ func newDependencyRegistry(cfg *config.Config) *health.Registry {
 		return probeEndpoint(ctx, cfg.S3.Endpoint, "8333")
 	}), false)
 	return registry
+}
+
+// openDatabasePool opens a PostgreSQL pool for readiness checks. It returns
+// nil when the DSN is empty or the pool cannot be created; readiness then
+// falls back to a TCP probe so a misconfigured environment still reports
+// down rather than panicking.
+func openDatabasePool(ctx context.Context, cfg *config.Config) *sql.DB {
+	dsn := cfg.Database.DSN
+	if strings.TrimSpace(dsn) == "" {
+		return nil
+	}
+	db, err := database.Open(ctx, dsn, cfg.Database.MaxOpenConns, cfg.Database.MaxIdleConns, cfg.Database.ConnMaxLifetime)
+	if err != nil {
+		return nil
+	}
+	return db
+}
+
+// checkDatabase reports readiness based on a real query. When a live pool is
+// available it runs SELECT 1; otherwise it falls back to a TCP probe so the
+// endpoint still distinguishes reachable-but-unqueryable from unreachable.
+func checkDatabase(ctx context.Context, db *sql.DB, dsn string) health.Status {
+	if db != nil {
+		if err := db.PingContext(ctx); err != nil {
+			return health.StatusDown
+		}
+		var one int
+		if err := db.QueryRowContext(ctx, "SELECT 1").Scan(&one); err != nil {
+			return health.StatusDown
+		}
+		return health.StatusOK
+	}
+	return probeEndpoint(ctx, dsn, "5432")
 }
 
 func probeEndpoint(ctx context.Context, raw, defaultPort string) health.Status {

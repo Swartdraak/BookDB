@@ -16,7 +16,7 @@ func TestReadinessUsesRegisteredDependencyChecks(t *testing.T) {
 	cfg.Database.DSN = ""
 
 	rec := httptest.NewRecorder()
-	writeDependencyHealth(rec, newDependencyRegistry(&cfg), "dev")
+	writeDependencyHealth(rec, newDependencyRegistry(&cfg, nil), "dev")
 
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("expected 503 for dependency failure, got %d", rec.Code)
