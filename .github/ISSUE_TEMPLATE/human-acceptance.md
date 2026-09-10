@@ -1,8 +1,8 @@
 ---
-name: Metadata quality or source issue
+name: Human acceptance gate
 about: Track one observable outcome and its evidence
 title: ""
-labels: "type:data-quality"
+labels: "type:acceptance"
 ---
 
 ## Outcome or observed problem

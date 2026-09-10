@@ -1,0 +1,37 @@
+name: Wiki navigation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bookdb-wiki-navigation
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Require configured Wiki credentials
+        env:
+          GH_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN }}
+        run: test -n "$GH_TOKEN" || { echo 'Configure WIKI_SYNC_TOKEN or run the documented local sync.'; exit 1; }
+      - name: Configure Git authentication
+        env:
+          GH_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN }}
+        run: gh auth setup-git
+      - name: Publish owned navigation only
+        env:
+          GH_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN }}
+          BOOKDB_REPOSITORY: ${{ github.repository }}
+        run: python3 scripts/project/wiki_sync.py --repo "$BOOKDB_REPOSITORY" --apply

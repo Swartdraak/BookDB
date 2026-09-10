@@ -1,3 +1,0 @@
-# Escalation Log
-
-- None yet.

@@ -1,8 +1,8 @@
 ---
-name: Metadata quality or source issue
+name: Implementation slice
 about: Track one observable outcome and its evidence
 title: ""
-labels: "type:data-quality"
+labels: "type:feature"
 ---
 
 ## Outcome or observed problem

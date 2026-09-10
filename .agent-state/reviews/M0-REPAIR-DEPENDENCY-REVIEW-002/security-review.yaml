@@ -1,9 +1,0 @@
-schema_version: "1.0"
-review_id: review-M0-REPAIR-DEPENDENCY-REVIEW-002-security
-status: APPROVED
-task_id: M0-REPAIR-DEPENDENCY-REVIEW-002
-lease_id: lease-M0-REPAIR-DEPENDENCY-REVIEW-002-001
-reviewer: security-reviewer
-summary: Dependency review remains present and fail-closed; scan thresholds remain intact.
-notes:
-  - Approved after verifying explicit capability handling and unchanged HIGH/CRITICAL gating.
