@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bookdb/bookdb/internal/api"
 	"github.com/bookdb/bookdb/internal/auth"
 	"github.com/bookdb/bookdb/internal/config"
 	"github.com/bookdb/bookdb/internal/database"
@@ -257,7 +259,8 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 	liveRegistry.Register("runtime", health.CheckFunc(func(context.Context) health.Status {
 		return health.StatusOK
 	}), true)
-	dependencyRegistry := newDependencyRegistry(cfg, openDatabasePool(context.Background(), cfg))
+	dbPool := openDatabasePool(context.Background(), cfg)
+	dependencyRegistry := newDependencyRegistry(cfg, dbPool)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health/live", func(w http.ResponseWriter, r *http.Request) {
@@ -285,6 +288,12 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(auth.PublicOIDC(settings))
 	})
+	// S1 key-protected canonical catalog API. Only mounted for the api role
+	// and when a database pool is available.
+	if name == "api" && dbPool != nil {
+		catalogAPI := api.NewServer(dbPool, apiMacKey(cfg))
+		mux.Handle("/api/v1/", catalogAPI.Handler())
+	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
@@ -463,4 +472,19 @@ func authModePayload(cfg *config.Config) map[string]any {
 		"mode": auth.ResolveMode(settings),
 		"oidc": auth.PublicOIDC(settings),
 	}
+}
+
+// apiMacKey derives the server-side key used to HMAC API key secrets. It is
+// sourced from BOOKDB_API_KEY_MAC (hex or raw) and falls back to a
+// development-only constant. Production deployments must set a strong,
+// secret value; the fallback is for local development only.
+func apiMacKey(cfg *config.Config) []byte {
+	if v := os.Getenv("BOOKDB_API_KEY_MAC"); v != "" {
+		if decoded, err := hex.DecodeString(v); err == nil && len(decoded) >= 32 {
+			return decoded
+		}
+		return []byte(v)
+	}
+	// Development-only fallback. Never use in production.
+	return []byte("bookdb-dev-api-key-mac-key-0000000000")
 }
