@@ -39,7 +39,7 @@ func newTestServer(t *testing.T) (*Server, *apikey.Store) {
 	t.Helper()
 	db := openTestDB(t)
 	macKey := []byte("test-mac-key-000000000000000000000000")
-	srv := NewServer(db, macKey)
+	srv := NewServer(db, macKey, nil)
 	store := apikey.NewStore(db, macKey)
 	return srv, store
 }

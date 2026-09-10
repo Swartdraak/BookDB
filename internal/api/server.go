@@ -2,7 +2,9 @@
 //
 // All /api/v1 catalog operations require a valid API key (X-API-Key header).
 // Missing/invalid/revoked/expired keys return 401; a valid identity lacking
-// the required scope returns 403; unknown resources return 404.
+// the required scope returns 403; unknown resources return 404. Exceeding
+// the shared rate limit returns 429 with Retry-After; an unavailable Valkey
+// backend returns 503.
 package api
 
 import (
@@ -10,9 +12,11 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/bookdb/bookdb/internal/apikey"
 	"github.com/bookdb/bookdb/internal/catalog"
+	"github.com/bookdb/bookdb/internal/ratelimit"
 )
 
 // ScopeRead is the scope required for catalog read operations.
@@ -20,15 +24,18 @@ const ScopeRead = "catalog:read"
 
 // Server is the S1 catalog API server.
 type Server struct {
-	repo *catalog.SQLRepository
-	keys *apikey.Store
+	repo    *catalog.SQLRepository
+	keys    *apikey.Store
+	limiter *ratelimit.Limiter
 }
 
-// NewServer constructs a catalog API server.
-func NewServer(db *sql.DB, macKey []byte) *Server {
+// NewServer constructs a catalog API server. limiter may be nil to disable
+// rate limiting (useful for tests that do not have a Valkey backend).
+func NewServer(db *sql.DB, macKey []byte, limiter *ratelimit.Limiter) *Server {
 	return &Server{
-		repo: catalog.NewSQLRepository(db),
-		keys: apikey.NewStore(db, macKey),
+		repo:    catalog.NewSQLRepository(db),
+		keys:    apikey.NewStore(db, macKey),
+		limiter: limiter,
 	}
 }
 
@@ -46,7 +53,8 @@ func (s *Server) Handler() http.Handler {
 	return mux
 }
 
-// requireKey wraps a handler with API key authentication and scope checks.
+// requireKey wraps a handler with API key authentication, scope checks, and
+// shared rate limiting.
 func (s *Server) requireKey(scope string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		secret := r.Header.Get("X-API-Key")
@@ -64,6 +72,23 @@ func (s *Server) requireKey(scope string, next http.HandlerFunc) http.HandlerFun
 			writeError(w, http.StatusForbidden, "insufficient_scope", "The API key lacks the required scope.")
 			return
 		}
+
+		// Shared rate limiting via Valkey.
+		if s.limiter != nil {
+			allowed, err := s.limiter.Allow(r.Context(), key.KeyID)
+			if err != nil {
+				// Valkey unavailable: documented 503.
+				writeError(w, http.StatusServiceUnavailable, "rate_limit_unavailable", "Rate limiting backend is unavailable.")
+				return
+			}
+			if !allowed {
+				retryAfter := s.limiter.RetryAfter()
+				w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
+				writeError(w, http.StatusTooManyRequests, "rate_limit_exceeded", "Rate limit exceeded. Retry after the specified interval.")
+				return
+			}
+		}
+
 		s.keys.TouchLastUsed(r.Context(), key.KeyID)
 		next(w, r)
 	}
@@ -200,6 +225,10 @@ func titleFor(status int) string {
 		return "Not Found"
 	case http.StatusBadRequest:
 		return "Bad Request"
+	case http.StatusTooManyRequests:
+		return "Too Many Requests"
+	case http.StatusServiceUnavailable:
+		return "Service Unavailable"
 	default:
 		return "Error"
 	}
