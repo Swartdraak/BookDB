@@ -1,52 +1,308 @@
 openapi: 3.1.0
 info:
   title: BookDB API
-  version: 0.2.0-planning
+  version: 0.3.0-s1
   license:
     name: Apache-2.0
+  description: |
+    BookDB canonical catalog API. All operations require a valid API key
+    in the X-API-Key header. Missing/invalid/revoked/expired keys return
+    401; insufficient scope returns 403; unknown resources return 404.
+    Exceeding the shared rate limit returns 429 with Retry-After.
 servers:
   - url: /api/v1
+security:
+  - ApiKeyAuth: []
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  parameters:
+    WorkID:
+      in: path
+      name: id
+      required: true
+      schema: {type: string, format: uuid}
+    ExpressionID:
+      in: path
+      name: id
+      required: true
+      schema: {type: string, format: uuid}
+    EditionID:
+      in: path
+      name: id
+      required: true
+      schema: {type: string, format: uuid}
+    PersonID:
+      in: path
+      name: id
+      required: true
+      schema: {type: string, format: uuid}
+    OrganizationID:
+      in: path
+      name: id
+      required: true
+      schema: {type: string, format: uuid}
+  schemas:
+    Work:
+      type: object
+      required: [work_id, canonical_title, normalized_title, created_at, updated_at]
+      properties:
+        work_id: {type: string, format: uuid}
+        canonical_title: {type: string}
+        normalized_title: {type: string}
+        language_code: {type: string, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    Expression:
+      type: object
+      required: [expression_id, work_id, language_code, expression_title, created_at, updated_at]
+      properties:
+        expression_id: {type: string, format: uuid}
+        work_id: {type: string, format: uuid}
+        language_code: {type: string}
+        expression_title: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    Edition:
+      type: object
+      required: [edition_id, expression_id, edition_title, created_at, updated_at]
+      properties:
+        edition_id: {type: string, format: uuid}
+        expression_id: {type: string, format: uuid}
+        edition_title: {type: string}
+        format: {type: string, nullable: true}
+        isbn13: {type: string, nullable: true}
+        publication_date: {type: string, format: date, nullable: true}
+        publisher_name: {type: string, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    Person:
+      type: object
+      required: [person_id, display_name, created_at, updated_at]
+      properties:
+        person_id: {type: string, format: uuid}
+        display_name: {type: string}
+        sort_name: {type: string, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    Organization:
+      type: object
+      required: [organization_id, display_name, created_at, updated_at]
+      properties:
+        organization_id: {type: string, format: uuid}
+        display_name: {type: string}
+        sort_name: {type: string, nullable: true}
+        organization_kind: {type: string, nullable: true}
+        parent_id: {type: string, format: uuid, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    Resolution:
+      type: object
+      required: [status]
+      properties:
+        status: {type: string, enum: [resolved, ambiguous, not_found]}
+        candidates:
+          type: array
+          items:
+            type: object
+            required: [target_type, target_id, status]
+            properties:
+              target_type: {type: string}
+              target_id: {type: string, format: uuid}
+              status: {type: string}
+    Error:
+      type: object
+      required: [type, title, status, detail]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+  responses:
+    Unauthorized:
+      description: Missing, invalid, revoked, or expired API key
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Forbidden:
+      description: Insufficient scope
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema: {type: integer}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    ServiceUnavailable:
+      description: Rate limiting backend unavailable
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
 paths:
-  /search:
-    get:
-      summary: Search the canonical BookDB catalog
-      responses:
-        "200": {description: Search results}
   /works/{id}:
     get:
       summary: Get canonical work
+      operationId: getWork
       parameters:
-        - in: path
-          name: id
-          required: true
-          schema: {type: string, format: uuid}
+        - $ref: '#/components/parameters/WorkID'
       responses:
-        "200": {description: Work}
-        "301": {description: Merged ID redirect}
-        "404": {description: Not found}
+        "200":
+          description: Work
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Work'}
+        "401": {$ref: '#/components/responses/Unauthorized'}
+        "403": {$ref: '#/components/responses/Forbidden'}
+        "404": {$ref: '#/components/responses/NotFound'}
+        "429": {$ref: '#/components/responses/TooManyRequests'}
+        "503": {$ref: '#/components/responses/ServiceUnavailable'}
+  /works/{id}/editions:
+    get:
+      summary: List editions for a work
+      operationId: listEditionsForWork
+      parameters:
+        - $ref: '#/components/parameters/WorkID'
+      responses:
+        "200":
+          description: Editions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  editions:
+                    type: array
+                    items: {$ref: '#/components/schemas/Edition'}
+        "401": {$ref: '#/components/responses/Unauthorized'}
+        "403": {$ref: '#/components/responses/Forbidden'}
+        "429": {$ref: '#/components/responses/TooManyRequests'}
+        "503": {$ref: '#/components/responses/ServiceUnavailable'}
+  /expressions/{id}:
+    get:
+      summary: Get canonical expression
+      operationId: getExpression
+      parameters:
+        - $ref: '#/components/parameters/ExpressionID'
+      responses:
+        "200":
+          description: Expression
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Expression'}
+        "401": {$ref: '#/components/responses/Unauthorized'}
+        "403": {$ref: '#/components/responses/Forbidden'}
+        "404": {$ref: '#/components/responses/NotFound'}
+        "429": {$ref: '#/components/responses/TooManyRequests'}
+        "503": {$ref: '#/components/responses/ServiceUnavailable'}
+  /editions/{id}:
+    get:
+      summary: Get canonical edition
+      operationId: getEdition
+      parameters:
+        - $ref: '#/components/parameters/EditionID'
+      responses:
+        "200":
+          description: Edition
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Edition'}
+        "401": {$ref: '#/components/responses/Unauthorized'}
+        "403": {$ref: '#/components/responses/Forbidden'}
+        "404": {$ref: '#/components/responses/NotFound'}
+        "429": {$ref: '#/components/responses/TooManyRequests'}
+        "503": {$ref: '#/components/responses/ServiceUnavailable'}
+  /people/{id}:
+    get:
+      summary: Get canonical person
+      operationId: getPerson
+      parameters:
+        - $ref: '#/components/parameters/PersonID'
+      responses:
+        "200":
+          description: Person
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Person'}
+        "401": {$ref: '#/components/responses/Unauthorized'}
+        "403": {$ref: '#/components/responses/Forbidden'}
+        "404": {$ref: '#/components/responses/NotFound'}
+        "429": {$ref: '#/components/responses/TooManyRequests'}
+        "503": {$ref: '#/components/responses/ServiceUnavailable'}
+  /people/{id}/works:
+    get:
+      summary: List works for a person
+      operationId: listWorksForPerson
+      parameters:
+        - $ref: '#/components/parameters/PersonID'
+      responses:
+        "200":
+          description: Works
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  works:
+                    type: array
+                    items: {$ref: '#/components/schemas/Work'}
+        "401": {$ref: '#/components/responses/Unauthorized'}
+        "403": {$ref: '#/components/responses/Forbidden'}
+        "429": {$ref: '#/components/responses/TooManyRequests'}
+        "503": {$ref: '#/components/responses/ServiceUnavailable'}
+  /organizations/{id}:
+    get:
+      summary: Get canonical organization
+      operationId: getOrganization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationID'
+      responses:
+        "200":
+          description: Organization
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Organization'}
+        "401": {$ref: '#/components/responses/Unauthorized'}
+        "403": {$ref: '#/components/responses/Forbidden'}
+        "404": {$ref: '#/components/responses/NotFound'}
+        "429": {$ref: '#/components/responses/TooManyRequests'}
+        "503": {$ref: '#/components/responses/ServiceUnavailable'}
   /resolve:
     get:
       summary: Resolve standard/source identifier
+      operationId: resolve
+      parameters:
+        - in: query
+          name: namespace
+          required: true
+          schema: {type: string}
+        - in: query
+          name: value
+          required: true
+          schema: {type: string}
       responses:
-        "200": {description: Resolution}
-  /changes:
-    get:
-      summary: Incremental canonical change feed
-      responses:
-        "200": {description: Change page}
-  /proposals:
-    post:
-      summary: Submit a non-public catalog proposal
-      responses:
-        "202": {description: Proposal submitted for review}
-  /admin/proposals/{id}/approve:
-    post:
-      summary: Administrator approval of user proposal
-      responses:
-        "200": {description: Approved and queued for canonical publication}
-        "403": {description: Administrator permission required}
-  /admin/sources/{id}/sync:
-    post:
-      summary: Manually trigger a source synchronization
-      responses:
-        "202": {description: Sync requested}
+        "200":
+          description: Resolution
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Resolution'}
+        "400":
+          description: Missing namespace or value
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        "401": {$ref: '#/components/responses/Unauthorized'}
+        "403": {$ref: '#/components/responses/Forbidden'}
+        "429": {$ref: '#/components/responses/TooManyRequests'}
+        "503": {$ref: '#/components/responses/ServiceUnavailable'}
