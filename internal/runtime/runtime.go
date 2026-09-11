@@ -26,6 +26,7 @@ import (
 	"github.com/bookdb/bookdb/internal/health"
 	"github.com/bookdb/bookdb/internal/logging"
 	"github.com/bookdb/bookdb/internal/ratelimit"
+	"github.com/bookdb/bookdb/internal/search/opensearch"
 	"github.com/bookdb/bookdb/internal/version"
 )
 
@@ -304,6 +305,12 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 		limiter := newRateLimiter(context.Background(), cfg)
 		catalogAPI := api.NewServer(dbPool, apiMacKey(cfg), limiter)
 		mux.Handle("/api/v1/", catalogAPI.Handler())
+
+		// S2 search and provenance endpoints.
+		searchFn := newSearchFn(context.Background(), cfg, dbPool)
+		searchAPI := api.NewSearchServer(dbPool, searchFn)
+		mux.Handle("/api/v1/search", searchAPI.Handler())
+		mux.HandleFunc("GET /api/v1/provenance/{type}/{id}", api.ProvenanceHandler(dbPool))
 	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
@@ -618,4 +625,23 @@ func runFixtures(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintln(stderr, "bookdb fixtures: loaded successfully")
 	return 0
+}
+
+// newSearchFn creates the search function that queries OpenSearch.
+// Returns nil when OpenSearch is not configured or unreachable.
+func newSearchFn(ctx context.Context, cfg *config.Config, db *sql.DB) func(entity, query string, limit int) ([]map[string]any, error) {
+	if strings.TrimSpace(cfg.OpenSearch.URL) == "" {
+		return nil
+	}
+	client, err := opensearch.New(cfg.OpenSearch.URL, cfg.OpenSearch.Timeout)
+	if err != nil {
+		return nil
+	}
+	if err := client.Check(ctx); err != nil {
+		return nil
+	}
+	indexer := opensearch.NewIndexer(client, db)
+	return func(entity, query string, limit int) ([]map[string]any, error) {
+		return indexer.Search(ctx, entity, query, limit)
+	}
 }

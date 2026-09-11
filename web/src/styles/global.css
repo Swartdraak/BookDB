@@ -370,3 +370,145 @@ code {
     width: 100%;
   }
 }
+
+/* --- S2: Search page --- */
+.search-form {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.search-input {
+  flex: 1;
+  min-height: 2.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-strong);
+  font-size: 1rem;
+  font-family: var(--font-body);
+  color: var(--text);
+}
+
+.search-input:focus-visible {
+  outline: 3px solid rgba(15, 118, 110, 0.32);
+  outline-offset: 2px;
+}
+
+.search-error {
+  border-color: rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.06);
+}
+
+.search-results {
+  list-style: none;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.search-result-item {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+}
+
+.result-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.result-link:hover,
+.result-link:focus-visible {
+  color: var(--accent);
+}
+
+.result-authors {
+  color: var(--muted);
+}
+
+.result-lang {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+/* --- S2: Work detail page --- */
+.breadcrumb {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.work-meta {
+  color: var(--muted);
+  margin: 0.35rem 0 0;
+}
+
+.edition-list,
+.provenance-list {
+  list-style: none;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.edition-item,
+.provenance-item {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.edition-publisher,
+.edition-date,
+.edition-format,
+.edition-isbn {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.provenance-source {
+  font-weight: 600;
+  color: var(--accent-strong);
+}
+
+.provenance-key {
+  font-size: 0.85rem;
+}
+
+.provenance-date {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-left: auto;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

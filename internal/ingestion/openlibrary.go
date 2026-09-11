@@ -110,17 +110,18 @@ func (i *Ingestor) ProcessRecord(ctx context.Context, jobID uuid.UUID, rec Recor
 	contentHash := hashRecord(rec)
 
 	// Check if this exact record was already processed (idempotency).
-	var existingStatus string
+	var existingHash string
 	err := i.db.QueryRowContext(ctx, `
-		SELECT status FROM bookdb.source_records
-		WHERE source_name = $1 AND source_key = $2 AND content_hash = $3`,
-		SourceName, rec.SourceKey, contentHash).Scan(&existingStatus)
+		SELECT content_hash FROM bookdb.source_records
+		WHERE source_name = $1 AND source_key = $2`,
+		SourceName, rec.SourceKey).Scan(&existingHash)
 	if err == nil {
-		// Already processed with same content: unchanged.
-		i.incrementCounter(ctx, jobID, "unchanged")
-		return "unchanged", nil
-	}
-	if err != sql.ErrNoRows {
+		if existingHash == contentHash {
+			i.incrementCounter(ctx, jobID, "unchanged")
+			return "unchanged", nil
+		}
+		// Content changed: update the record.
+	} else if err != sql.ErrNoRows {
 		return "", fmt.Errorf("ingestion: check existing: %w", err)
 	}
 
@@ -133,12 +134,11 @@ func (i *Ingestor) ProcessRecord(ctx context.Context, jobID uuid.UUID, rec Recor
 	// Store the source record with provenance.
 	rawJSON, _ := json.Marshal(rec)
 	_, err = i.db.ExecContext(ctx, `
-		INSERT INTO bookdb.source_records (source_name, source_key, content_hash, raw_json, status)
-		VALUES ($1, $2, $3, $4, 'accepted')
+		INSERT INTO bookdb.source_records (source_name, source_key, content_hash, payload)
+		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (source_name, source_key) DO UPDATE SET
 			content_hash = EXCLUDED.content_hash,
-			raw_json = EXCLUDED.raw_json,
-			status = 'accepted'`,
+			payload = EXCLUDED.payload`,
 		SourceName, rec.SourceKey, contentHash, rawJSON)
 	if err != nil {
 		return "", fmt.Errorf("ingestion: store source record: %w", err)
@@ -154,9 +154,9 @@ func (i *Ingestor) ProcessRecord(ctx context.Context, jobID uuid.UUID, rec Recor
 		eventType = "person.accepted"
 	}
 	payload, _ := json.Marshal(map[string]string{
-		"source_key": rec.SourceKey,
+		"source_key":  rec.SourceKey,
 		"source_type": rec.SourceType,
-		"title":      rec.Title,
+		"title":       rec.Title,
 	})
 	_, err = i.db.ExecContext(ctx, `
 		INSERT INTO bookdb.outbox (aggregate_type, aggregate_id, event_type, payload)

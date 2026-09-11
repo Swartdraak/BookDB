@@ -108,7 +108,7 @@ func ProvenanceHandler(db *sql.DB) http.HandlerFunc {
 
 		var records []map[string]any
 		rows, err := db.QueryContext(r.Context(), `
-			SELECT source_name, source_key, status, raw_json, created_at
+			SELECT source_name, source_key, content_hash, payload, created_at
 			FROM bookdb.source_records
 			WHERE source_key = $1
 			ORDER BY created_at DESC
@@ -123,21 +123,21 @@ func ProvenanceHandler(db *sql.DB) http.HandlerFunc {
 			var (
 				sourceName string
 				sourceKey  string
-				status     string
-				rawJSON    []byte
+				contentHash string
+				payload    []byte
 				createdAt  string
 			)
-			if err := rows.Scan(&sourceName, &sourceKey, &status, &rawJSON, &createdAt); err != nil {
+			if err := rows.Scan(&sourceName, &sourceKey, &contentHash, &payload, &createdAt); err != nil {
 				continue
 			}
 			var raw map[string]any
-			_ = json.Unmarshal(rawJSON, &raw)
+			_ = json.Unmarshal(payload, &raw)
 			records = append(records, map[string]any{
-				"source_name": sourceName,
-				"source_key":  sourceKey,
-				"status":      status,
-				"raw":         raw,
-				"created_at":  createdAt,
+				"source_name":  sourceName,
+				"source_key":   sourceKey,
+				"content_hash": contentHash,
+				"raw":          raw,
+				"created_at":   createdAt,
 			})
 		}
 
@@ -146,8 +146,8 @@ func ProvenanceHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{
-			"entity_type":   entityType,
-			"entity_id":     entityID,
+			"entity_type":    entityType,
+			"entity_id":      entityID,
 			"source_records": records,
 		})
 	}
