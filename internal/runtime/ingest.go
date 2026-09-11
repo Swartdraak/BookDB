@@ -155,4 +155,3 @@ func runIngest(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fmt.Fprintln(stderr, "bookdb ingest: complete")
 	return 0
 }
-

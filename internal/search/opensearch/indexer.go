@@ -43,13 +43,13 @@ func (ix *Indexer) EnsureIndex(ctx context.Context, entity string, version int) 
 	mapping := map[string]any{
 		"mappings": map[string]any{
 			"properties": map[string]any{
-				"entity_id":   map[string]string{"type": "keyword"},
-				"title":       map[string]string{"type": "text"},
-				"normalized":  map[string]string{"type": "keyword"},
-				"language":    map[string]string{"type": "keyword"},
-				"authors":     map[string]string{"type": "text"},
-				"source_key":  map[string]string{"type": "keyword"},
-				"indexed_at":  map[string]string{"type": "date"},
+				"entity_id":  map[string]string{"type": "keyword"},
+				"title":      map[string]string{"type": "text"},
+				"normalized": map[string]string{"type": "keyword"},
+				"language":   map[string]string{"type": "keyword"},
+				"authors":    map[string]string{"type": "text"},
+				"source_key": map[string]string{"type": "keyword"},
+				"indexed_at": map[string]string{"type": "date"},
 			},
 		},
 	}
@@ -183,11 +183,11 @@ func (ix *Indexer) ProcessOutbox(ctx context.Context, batchSize int) (int, error
 	processed := 0
 	for rows.Next() {
 		var (
-			id           int64
-			aggType      string
-			aggID        string
-			eventType    string
-			payload      []byte
+			id        int64
+			aggType   string
+			aggID     string
+			eventType string
+			payload   []byte
 		)
 		if err := rows.Scan(&id, &aggType, &aggID, &eventType, &payload); err != nil {
 			return processed, fmt.Errorf("opensearch: scan outbox: %w", err)
@@ -219,4 +219,3 @@ func (ix *Indexer) markPublished(ctx context.Context, id int64) {
 	_, _ = ix.db.ExecContext(ctx, `
 		UPDATE bookdb.outbox SET published_at = now() WHERE id = $1`, id)
 }
-

@@ -54,8 +54,8 @@ func (s *SearchServer) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"query":  query,
-		"total":  len(docs),
+		"query":   query,
+		"total":   len(docs),
 		"results": docs,
 	})
 }
@@ -146,10 +146,9 @@ func ProvenanceHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{
-			"entity_type":   entityType,
-			"entity_id":     entityID,
+			"entity_type":    entityType,
+			"entity_id":      entityID,
 			"source_records": records,
 		})
 	}
 }
-

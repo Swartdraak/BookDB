@@ -1,7 +1,7 @@
 -- S2: Ingestion job state, transactional outbox, and search projection support.
 -- Forward-only migration. Does not modify existing tables.
-
-BEGIN;
+-- Note: the migrator wraps each migration in its own transaction, so this file
+-- must not contain explicit BEGIN/COMMIT statements.
 
 -- Ingestion job state: tracks the progress of a source import run.
 CREATE TABLE IF NOT EXISTS bookdb.ingestion_jobs (
@@ -69,6 +69,3 @@ CREATE TABLE IF NOT EXISTS bookdb.search_projection_state (
     indexed_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (entity_type, entity_id)
 );
-
-COMMIT;
-
