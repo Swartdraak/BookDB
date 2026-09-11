@@ -311,7 +311,12 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 		searchAPI := api.NewSearchServer(dbPool, searchFn)
 		mux.Handle("/api/v1/search", searchAPI.Handler())
 		mux.HandleFunc("GET /api/v1/provenance/{type}/{id}", api.ProvenanceHandler(dbPool))
+
+		// S3 reconciliation endpoints.
+		reconAPI := api.NewReconciliationServer(dbPool)
+		mux.Handle("/api/v1/reconciliation/", reconAPI.Handler())
 	}
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
@@ -645,3 +650,4 @@ func newSearchFn(ctx context.Context, cfg *config.Config, db *sql.DB) func(entit
 		return indexer.Search(ctx, entity, query, limit)
 	}
 }
+
