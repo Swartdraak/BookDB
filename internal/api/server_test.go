@@ -202,7 +202,8 @@ func TestListEditionsForWork(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(body.Editions) != 4 {
-		t.Fatalf("expected 4 editions, got %d", len(body.Editions))
+	// Dune has print, ebook, two audio, and the Korean print edition.
+	if len(body.Editions) != 5 {
+		t.Fatalf("expected 5 editions, got %d", len(body.Editions))
 	}
 }

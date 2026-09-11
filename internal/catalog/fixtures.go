@@ -9,11 +9,17 @@ import (
 
 // Fixture UUIDs are fixed so repeated loads are idempotent and tests can
 // reference stable identities. They are clearly synthetic test data.
+//
+// Identity model (S1 correction): the Korean translation of Dune is an
+// Expression of the single Dune Work, not a second canonical Work. A
+// translation is a realization of the same intellectual creation; it must not
+// be modelled as a duplicate Work. Genuinely different works that share a
+// title (The Silent Sea A/B) and different people that share a name (Jane Doe
+// A/B) remain separate.
 const (
-	WorkIDDune       = "11111111-1111-4111-8111-111111111111"
-	WorkIDDuneKorean = "11111111-1111-4111-8111-111111111112"
-	WorkIDSameNameA  = "11111111-1111-4111-8111-111111111113"
-	WorkIDSameNameB  = "11111111-1111-4111-8111-111111111114"
+	WorkIDDune      = "11111111-1111-4111-8111-111111111111"
+	WorkIDSameNameA = "11111111-1111-4111-8111-111111111113"
+	WorkIDSameNameB = "11111111-1111-4111-8111-111111111114"
 
 	ExprIDDuneEN     = "22222222-2222-4222-8222-222222222221"
 	ExprIDDuneKO     = "22222222-2222-4222-8222-222222222222"
@@ -30,11 +36,12 @@ const (
 	EdIDSameNameA  = "33333333-3333-4333-8333-333333333336"
 	EdIDSameNameB  = "33333333-3333-4333-8333-333333333337"
 
-	PersonIDFrank     = "44444444-4444-4444-8444-444444444441"
-	PersonIDJane      = "44444444-4444-4444-8444-444444444442"
-	PersonIDJaneB     = "44444444-4444-4444-8444-444444444443"
-	PersonIDNarratorA = "44444444-4444-4444-8444-444444444444"
-	PersonIDNarratorB = "44444444-4444-4444-8444-444444444445"
+	PersonIDFrank      = "44444444-4444-4444-8444-444444444441"
+	PersonIDJane       = "44444444-4444-4444-8444-444444444442"
+	PersonIDJaneB      = "44444444-4444-4444-8444-444444444443"
+	PersonIDNarratorA  = "44444444-4444-4444-8444-444444444444"
+	PersonIDNarratorB  = "44444444-4444-4444-8444-444444444445"
+	PersonIDTranslator = "44444444-4444-4444-8444-444444444446"
 
 	OrgIDAce     = "55555555-5555-4555-8555-555555555551"
 	OrgIDPenguin = "55555555-5555-4555-8555-555555555552"
@@ -50,11 +57,23 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// Works.
-	if err := upsertWork(ctx, tx, WorkIDDune, "Dune", "dune", "en"); err != nil {
-		return err
+	// Targeted, idempotent repair of the S1 fixture correction: the Korean
+	// translation of Dune was previously modelled as a second canonical Work
+	// (…112). It is now an Expression of the Dune Work. Retire the stale
+	// second-Work row if a database still holds it. This is a targeted repair
+	// of this known fixture identity, not a general merge policy, and it
+	// deletes only that specific synthetic row.
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM bookdb.works
+		WHERE work_id = '11111111-1111-4111-8111-111111111112'
+		  AND canonical_title = 'Dune (Korean translation)'`); err != nil {
+		return fmt.Errorf("catalog: retire stale Korean work: %w", err)
 	}
-	if err := upsertWork(ctx, tx, WorkIDDuneKorean, "Dune (Korean translation)", "dune korean translation", "ko"); err != nil {
+
+	// Works. Dune is a single Work; its Korean translation is an Expression
+	// of it (below), not a second Work. The two "The Silent Sea" works are
+	// genuinely different works that share a title and stay separate.
+	if err := upsertWork(ctx, tx, WorkIDDune, "Dune", "dune", "en"); err != nil {
 		return err
 	}
 	if err := upsertWork(ctx, tx, WorkIDSameNameA, "The Silent Sea", "the silent sea", "en"); err != nil {
@@ -64,11 +83,12 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
-	// Expressions. Two same-language narrations of Dune must remain distinct.
+	// Expressions. The Korean translation is an Expression of the Dune Work.
+	// Two same-language narrations of Dune must remain distinct.
 	if err := upsertExpression(ctx, tx, ExprIDDuneEN, WorkIDDune, "en", "Dune"); err != nil {
 		return err
 	}
-	if err := upsertExpression(ctx, tx, ExprIDDuneKO, WorkIDDuneKorean, "ko", "Dune (Korean)"); err != nil {
+	if err := upsertExpression(ctx, tx, ExprIDDuneKO, WorkIDDune, "ko", "Dune (Korean)"); err != nil {
 		return err
 	}
 	if err := upsertExpression(ctx, tx, ExprIDDuneAudioA, WorkIDDune, "en", "Dune (narration A)"); err != nil {
@@ -84,7 +104,8 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
-	// People: two distinct people with the same display name.
+	// People: two distinct people with the same display name, plus the
+	// translator of the Korean expression.
 	if err := upsertPerson(ctx, tx, PersonIDFrank, "Frank Herbert", "Herbert, Frank"); err != nil {
 		return err
 	}
@@ -100,6 +121,9 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 	if err := upsertPerson(ctx, tx, PersonIDNarratorB, "Narrator Beta", "Beta, Narrator"); err != nil {
 		return err
 	}
+	if err := upsertPerson(ctx, tx, PersonIDTranslator, "Korean Translator", "Translator, Korean"); err != nil {
+		return err
+	}
 
 	// Organizations.
 	if err := upsertOrganization(ctx, tx, OrgIDAce, "Ace Books", "Ace Books", "publisher", nil); err != nil {
@@ -109,7 +133,8 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
-	// Editions. Print/ebook/audio variants; one edition has no ISBN.
+	// Editions. Print/ebook/audio variants; one edition has no ISBN. The
+	// Korean print edition is a manifestation of the Korean expression.
 	if err := upsertEdition(ctx, tx, EdIDDunePrint, ExprIDDuneEN, "Dune (print)", strPtr("print"), strPtr("9780441172719"), date(1965, 8, 1), strPtr("Ace Books")); err != nil {
 		return err
 	}
@@ -155,7 +180,7 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
-	// Credits: author, narrators, publisher.
+	// Credits: author, translator, narrators, publisher.
 	if err := upsertCredit(ctx, tx, strPtr(PersonIDFrank), nil, "author", "work", WorkIDDune, 0, nil); err != nil {
 		return err
 	}
@@ -163,6 +188,9 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 	if err := upsertCredit(ctx, tx, strPtr(PersonIDJaneB), nil, "author", "work", WorkIDSameNameB, 0, nil); err != nil {
+		return err
+	}
+	if err := upsertCredit(ctx, tx, strPtr(PersonIDTranslator), nil, "translator", "expression", ExprIDDuneKO, 0, nil); err != nil {
 		return err
 	}
 	if err := upsertCredit(ctx, tx, strPtr(PersonIDNarratorA), nil, "narrator", "expression", ExprIDDuneAudioA, 0, nil); err != nil {
@@ -343,3 +371,134 @@ func date(y, m int, d int) *time.Time {
 
 // strPtr returns a pointer to the given string, for nullable fixture fields.
 func strPtr(s string) *string { return &s }
+
+// FixtureReport is the read-only verification result for the S1 fixture graph.
+// It reports relationships and counts so a human can inspect correctness
+// without inferring it from row counts alone.
+type FixtureReport struct {
+	Counts        map[string]int `json:"counts"`
+	Relationships []string       `json:"relationships"`
+	Errors        []string       `json:"errors,omitempty"`
+}
+
+// VerifyFixtures performs a read-only verification of the S1 fixture graph.
+// It reports graph relationships and counts, and returns a non-nil error (with
+// the broken assertions listed) when any expected relationship is missing. It
+// never mutates the database.
+func VerifyFixtures(ctx context.Context, db *sql.DB) (FixtureReport, error) {
+	var rep FixtureReport
+	rep.Counts = make(map[string]int)
+	fail := func(format string, args ...any) {
+		rep.Errors = append(rep.Errors, fmt.Sprintf(format, args...))
+	}
+	ok := func(rel string) { rep.Relationships = append(rep.Relationships, rel) }
+
+	count := func(table string) int {
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT count(*) FROM bookdb.`+table).Scan(&n); err != nil {
+			fail("count %s: %v", table, err)
+			return 0
+		}
+		rep.Counts[table] = n
+		return n
+	}
+
+	count("works")
+	count("expressions")
+	count("editions")
+	count("people")
+	count("organizations")
+	count("credits")
+	count("identifiers")
+	count("edition_contents")
+
+	// 1. The Korean translation is an Expression of the Dune Work, not a
+	//    second Work.
+	var koWork string
+	err := db.QueryRowContext(ctx, `SELECT work_id FROM bookdb.expressions WHERE expression_id = $1`, ExprIDDuneKO).Scan(&koWork)
+	if err != nil {
+		fail("Korean expression %s not found: %v", ExprIDDuneKO, err)
+	} else if koWork != WorkIDDune {
+		fail("Korean expression %s belongs to work %s, expected %s", ExprIDDuneKO, koWork, WorkIDDune)
+	} else {
+		ok("Korean translation is an Expression of the Dune Work")
+	}
+	var stale int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM bookdb.works WHERE work_id = '11111111-1111-4111-8111-111111111112'`).Scan(&stale); err == nil {
+		if stale != 0 {
+			fail("retired second Korean Work still present (%d rows)", stale)
+		} else {
+			ok("retired second Korean Work is absent")
+		}
+	}
+
+	// 2. Distinct same-language narrations of Dune remain separate.
+	var narrA, narrB string
+	if err := db.QueryRowContext(ctx, `SELECT work_id FROM bookdb.expressions WHERE expression_id = $1`, ExprIDDuneAudioA).Scan(&narrA); err == nil {
+		if err := db.QueryRowContext(ctx, `SELECT work_id FROM bookdb.expressions WHERE expression_id = $1`, ExprIDDuneAudioB).Scan(&narrB); err == nil {
+			if narrA == WorkIDDune && narrB == WorkIDDune && ExprIDDuneAudioA != ExprIDDuneAudioB {
+				ok("two same-language narrations are distinct expressions of Dune")
+			} else {
+				fail("narrations not both distinct expressions of Dune (A=%s B=%s)", narrA, narrB)
+			}
+		}
+	}
+
+	// 3. Hard negatives: same-title works and same-name people stay separate.
+	var seaA, seaB string
+	if err := db.QueryRowContext(ctx, `SELECT work_id FROM bookdb.works WHERE work_id = $1`, WorkIDSameNameA).Scan(&seaA); err == nil {
+		if err := db.QueryRowContext(ctx, `SELECT work_id FROM bookdb.works WHERE work_id = $1`, WorkIDSameNameB).Scan(&seaB); err == nil {
+			if seaA != seaB {
+				ok("same-title works (The Silent Sea A/B) remain distinct")
+			} else {
+				fail("same-title works were merged")
+			}
+		}
+	}
+	var janeA, janeB string
+	if err := db.QueryRowContext(ctx, `SELECT display_name FROM bookdb.people WHERE person_id = $1`, PersonIDJane).Scan(&janeA); err == nil {
+		if err := db.QueryRowContext(ctx, `SELECT display_name FROM bookdb.people WHERE person_id = $1`, PersonIDJaneB).Scan(&janeB); err == nil {
+			if janeA == janeB && PersonIDJane != PersonIDJaneB {
+				ok("same-name people (Jane Doe A/B) remain distinct")
+			} else {
+				fail("same-name people not distinct or not same-named")
+			}
+		}
+	}
+
+	// 4. Identifier ambiguity: the conflicting ISBN resolves to two editions.
+	var amb int
+	if err := db.QueryRowContext(ctx, `SELECT count(DISTINCT target_id) FROM bookdb.identifiers WHERE namespace='isbn13' AND normalized_value='9780441172719'`).Scan(&amb); err == nil {
+		if amb == 2 {
+			ok("conflicting ISBN 9780441172719 is explicit ambiguity (2 editions)")
+		} else {
+			fail("conflicting ISBN expected 2 distinct targets, got %d", amb)
+		}
+	}
+
+	// 5. Reload idempotency: re-running LoadFixtures must not change counts.
+	before := map[string]int{}
+	for k, v := range rep.Counts {
+		before[k] = v
+	}
+	if err := LoadFixtures(ctx, db); err != nil {
+		fail("reload fixtures: %v", err)
+	} else {
+		changed := false
+		for table, n := range rep.Counts {
+			var after int
+			if err := db.QueryRowContext(ctx, `SELECT count(*) FROM bookdb.`+table).Scan(&after); err == nil && after != n {
+				fail("reload changed %s count %d -> %d", table, n, after)
+				changed = true
+			}
+		}
+		if !changed {
+			ok("fixture reload is idempotent (counts unchanged)")
+		}
+	}
+
+	if len(rep.Errors) > 0 {
+		return rep, fmt.Errorf("catalog: fixture verification failed with %d error(s)", len(rep.Errors))
+	}
+	return rep, nil
+}
