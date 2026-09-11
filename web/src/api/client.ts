@@ -62,6 +62,79 @@ export interface EditionsResponse {
   editions: Edition[];
 }
 
+export interface SeriesMembership {
+  series_id: string;
+  series_title: string;
+  series_order?: number;
+  work_id: string;
+}
+
+export interface RichCredit {
+  role: string;
+  person_id?: string;
+  organization_id?: string;
+}
+
+export interface RichEdition extends Edition {
+  accessibility: string[];
+  credits: RichCredit[];
+}
+
+export interface AudioPerformance {
+  performance_id: string;
+  expression_id: string;
+  narrator_id?: string;
+  narrator_name?: string;
+  producer_id?: string;
+  producer_name?: string;
+  is_abridged: boolean;
+  duration_sec?: number;
+  sample_url?: string;
+}
+
+export interface Asset {
+  asset_id: string;
+  entity_type: string;
+  entity_id: string;
+  asset_kind: string;
+  url: string;
+  eligibility: string;
+}
+
+export interface RichWorkResponse {
+  work: Work;
+  series_membership: SeriesMembership[];
+  editions: RichEdition[];
+  audio_performances: AudioPerformance[];
+  assets: Asset[];
+}
+
+export interface EditionComparison {
+  left: RichEdition;
+  right: RichEdition;
+  same_work: boolean;
+  differences: string[];
+}
+
+export interface QualityCoverageByFormatLanguage {
+  format: string;
+  language_code: string;
+  editions: number;
+  known_isbn: number;
+  known_publication_date: number;
+  known_publisher: number;
+}
+
+export interface QualityCoverageBySource {
+  source_name: string;
+  records: number;
+}
+
+export interface QualityReport {
+  by_format_language: QualityCoverageByFormatLanguage[];
+  by_source: QualityCoverageBySource[];
+}
+
 export interface ApiError {
   type: string;
   title: string;
@@ -109,3 +182,19 @@ export function getWork(workId: string, apiKey?: string) {
 export function getEditions(workId: string, apiKey?: string) {
   return apiFetch<EditionsResponse>(`/api/v1/works/${workId}/editions`, apiKey);
 }
+
+export function getRichWork(workId: string, apiKey?: string) {
+  return apiFetch<RichWorkResponse>(`/api/v1/works/${workId}/rich`, apiKey);
+}
+
+export function compareEditions(leftEditionId: string, rightEditionId: string, apiKey?: string) {
+  return apiFetch<EditionComparison>(
+    `/api/v1/editions/compare?left=${encodeURIComponent(leftEditionId)}&right=${encodeURIComponent(rightEditionId)}`,
+    apiKey,
+  );
+}
+
+export function getQualityCoverage(apiKey?: string) {
+  return apiFetch<QualityReport>(`/api/v1/quality/coverage`, apiKey);
+}
+

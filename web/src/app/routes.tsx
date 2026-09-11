@@ -1,5 +1,6 @@
 import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import { AppShell } from './layouts/AppShell';
+import { EditionComparePage } from './pages/EditionComparePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { SearchPage } from './pages/SearchPage';
@@ -14,6 +15,7 @@ export const appRoutes: RouteObject[] = [
     children: [
       { index: true, element: <OverviewPage /> },
       { path: 'search', element: <SearchPage /> },
+      { path: 'compare', element: <EditionComparePage /> },
       { path: 'works/:id', element: <WorkDetailPage /> },
       { path: 'workspace', element: <WorkspacePage /> },
       { path: 'settings', element: <SettingsPage /> },

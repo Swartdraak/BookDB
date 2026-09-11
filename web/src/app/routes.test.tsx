@@ -30,4 +30,10 @@ describe('app routes', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /back to overview/i })).toBeInTheDocument();
   });
+
+  it('renders the edition comparison route', () => {
+    renderRoute(['/compare']);
+
+    expect(screen.getByRole('heading', { name: /edition comparison/i })).toBeInTheDocument();
+  });
 });

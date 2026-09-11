@@ -44,11 +44,14 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/works/{id}", s.requireKey(ScopeRead, s.handleGetWork))
 	mux.HandleFunc("GET /api/v1/works/{id}/editions", s.requireKey(ScopeRead, s.handleListEditions))
+	mux.HandleFunc("GET /api/v1/works/{id}/rich", s.requireKey(ScopeRead, s.handleGetWorkRich))
 	mux.HandleFunc("GET /api/v1/expressions/{id}", s.requireKey(ScopeRead, s.handleGetExpression))
 	mux.HandleFunc("GET /api/v1/editions/{id}", s.requireKey(ScopeRead, s.handleGetEdition))
+	mux.HandleFunc("GET /api/v1/editions/compare", s.requireKey(ScopeRead, s.handleCompareEditions))
 	mux.HandleFunc("GET /api/v1/people/{id}", s.requireKey(ScopeRead, s.handleGetPerson))
 	mux.HandleFunc("GET /api/v1/people/{id}/works", s.requireKey(ScopeRead, s.handleListWorksForPerson))
 	mux.HandleFunc("GET /api/v1/organizations/{id}", s.requireKey(ScopeRead, s.handleGetOrganization))
+	mux.HandleFunc("GET /api/v1/quality/coverage", s.requireKey(ScopeRead, s.handleQualityCoverage))
 	mux.HandleFunc("GET /api/v1/resolve", s.requireKey(ScopeRead, s.handleResolve))
 	return mux
 }
@@ -125,6 +128,19 @@ func (s *Server) handleListEditions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"editions": editions})
 }
 
+func (s *Server) handleGetWorkRich(w http.ResponseWriter, r *http.Request) {
+	rich, err := s.repo.GetRichWork(r.Context(), r.PathValue("id"))
+	if errors.Is(err, catalog.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "Work not found.")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal", "Failed to load rich work details.")
+		return
+	}
+	writeJSON(w, http.StatusOK, rich)
+}
+
 func (s *Server) handleGetExpression(w http.ResponseWriter, r *http.Request) {
 	expr, err := s.repo.GetExpression(r.Context(), r.PathValue("id"))
 	if errors.Is(err, catalog.ErrNotFound) {
@@ -149,6 +165,25 @@ func (s *Server) handleGetEdition(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, edition)
+}
+
+func (s *Server) handleCompareEditions(w http.ResponseWriter, r *http.Request) {
+	left := r.URL.Query().Get("left")
+	right := r.URL.Query().Get("right")
+	if left == "" || right == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Both left and right edition IDs are required.")
+		return
+	}
+	cmp, err := s.repo.CompareEditions(r.Context(), left, right)
+	if errors.Is(err, catalog.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "One or both editions were not found.")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal", "Failed to compare editions.")
+		return
+	}
+	writeJSON(w, http.StatusOK, cmp)
 }
 
 func (s *Server) handleGetPerson(w http.ResponseWriter, r *http.Request) {
@@ -199,6 +234,15 @@ func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
+}
+
+func (s *Server) handleQualityCoverage(w http.ResponseWriter, r *http.Request) {
+	report, err := s.repo.QualityReport(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal", "Failed to build quality report.")
+		return
+	}
+	writeJSON(w, http.StatusOK, report)
 }
 
 // errorBody is the consistent error object.

@@ -20,6 +20,8 @@ const (
 	WorkIDDune      = "11111111-1111-4111-8111-111111111111"
 	WorkIDSameNameA = "11111111-1111-4111-8111-111111111113"
 	WorkIDSameNameB = "11111111-1111-4111-8111-111111111114"
+	WorkIDThreeBody = "11111111-1111-4111-8111-111111111115"
+	WorkIDAlchemist = "11111111-1111-4111-8111-111111111116"
 
 	ExprIDDuneEN     = "22222222-2222-4222-8222-222222222221"
 	ExprIDDuneKO     = "22222222-2222-4222-8222-222222222222"
@@ -27,6 +29,8 @@ const (
 	ExprIDDuneAudioB = "22222222-2222-4222-8222-222222222224"
 	ExprIDSameNameA  = "22222222-2222-4222-8222-222222222225"
 	ExprIDSameNameB  = "22222222-2222-4222-8222-222222222226"
+	ExprIDThreeBody  = "22222222-2222-4222-8222-222222222227"
+	ExprIDAlchemist  = "22222222-2222-4222-8222-222222222228"
 
 	EdIDDunePrint  = "33333333-3333-4333-8333-333333333331"
 	EdIDDuneEbook  = "33333333-3333-4333-8333-333333333332"
@@ -35,6 +39,8 @@ const (
 	EdIDDuneKO     = "33333333-3333-4333-8333-333333333335"
 	EdIDSameNameA  = "33333333-3333-4333-8333-333333333336"
 	EdIDSameNameB  = "33333333-3333-4333-8333-333333333337"
+	EdIDThreeBody  = "33333333-3333-4333-8333-333333333338"
+	EdIDAlchemist  = "33333333-3333-4333-8333-333333333339"
 
 	PersonIDFrank      = "44444444-4444-4444-8444-444444444441"
 	PersonIDJane       = "44444444-4444-4444-8444-444444444442"
@@ -45,6 +51,8 @@ const (
 
 	OrgIDAce     = "55555555-5555-4555-8555-555555555551"
 	OrgIDPenguin = "55555555-5555-4555-8555-555555555552"
+
+	SeriesIDDuneSaga = "66666666-6666-4666-8666-666666666661"
 )
 
 // LoadFixtures inserts the S1 synthetic fixture catalog. It is idempotent:
@@ -82,6 +90,12 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 	if err := upsertWork(ctx, tx, WorkIDSameNameB, "The Silent Sea", "the silent sea", "en"); err != nil {
 		return err
 	}
+	if err := upsertWork(ctx, tx, WorkIDThreeBody, "三体", "san ti", "zh"); err != nil {
+		return err
+	}
+	if err := upsertWork(ctx, tx, WorkIDAlchemist, "الخيميائي", "al-kimiya'i", "ar"); err != nil {
+		return err
+	}
 
 	// Expressions. The Korean translation is an Expression of the Dune Work.
 	// Two same-language narrations of Dune must remain distinct.
@@ -101,6 +115,12 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 	if err := upsertExpression(ctx, tx, ExprIDSameNameB, WorkIDSameNameB, "en", "The Silent Sea"); err != nil {
+		return err
+	}
+	if err := upsertExpression(ctx, tx, ExprIDThreeBody, WorkIDThreeBody, "zh", "三体"); err != nil {
+		return err
+	}
+	if err := upsertExpression(ctx, tx, ExprIDAlchemist, WorkIDAlchemist, "ar", "الخيميائي"); err != nil {
 		return err
 	}
 
@@ -156,6 +176,12 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 	if err := upsertEdition(ctx, tx, EdIDSameNameB, ExprIDSameNameB, "The Silent Sea (B)", strPtr("print"), strPtr("9780000000002"), date(2005, 1, 1), strPtr("Penguin")); err != nil {
 		return err
 	}
+	if err := upsertEdition(ctx, tx, EdIDThreeBody, ExprIDThreeBody, "三体 (Braille edition)", strPtr("braille"), strPtr("9787500000001"), date(2008, 5, 1), strPtr("Chongqing Press")); err != nil {
+		return err
+	}
+	if err := upsertEdition(ctx, tx, EdIDAlchemist, ExprIDAlchemist, "الخيميائي (Large print)", strPtr("large_print"), strPtr("9789953899991"), date(2009, 9, 1), strPtr("Dar Al Andalus")); err != nil {
+		return err
+	}
 
 	// Edition contents: each edition contains its expression.
 	if err := upsertEditionContent(ctx, tx, EdIDDunePrint, ExprIDDuneEN, 0); err != nil {
@@ -177,6 +203,12 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 	if err := upsertEditionContent(ctx, tx, EdIDSameNameB, ExprIDSameNameB, 0); err != nil {
+		return err
+	}
+	if err := upsertEditionContent(ctx, tx, EdIDThreeBody, ExprIDThreeBody, 0); err != nil {
+		return err
+	}
+	if err := upsertEditionContent(ctx, tx, EdIDAlchemist, ExprIDAlchemist, 0); err != nil {
 		return err
 	}
 
@@ -220,6 +252,12 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 	if err := upsertIdentifier(ctx, tx, "isbn13", "9780000000002", "978-0-000000000-2", "edition", EdIDSameNameB, "resolved"); err != nil {
 		return err
 	}
+	if err := upsertIdentifier(ctx, tx, "isbn13", "9787500000001", "978-7-5000-0000-1", "edition", EdIDThreeBody, "resolved"); err != nil {
+		return err
+	}
+	if err := upsertIdentifier(ctx, tx, "isbn13", "9789953899991", "978-9953-8999-9-1", "edition", EdIDAlchemist, "resolved"); err != nil {
+		return err
+	}
 	// Conflicting identifier claim: the same ISBN asserted for a different
 	// edition. Both claims are preserved; resolution returns ambiguity.
 	if err := upsertIdentifier(ctx, tx, "isbn13", "9780441172719", "978-0-441-17271-9", "edition", EdIDDuneEbook, "conflict"); err != nil {
@@ -227,6 +265,38 @@ func LoadFixtures(ctx context.Context, db *sql.DB) error {
 	}
 	// A work-level identifier (source ID) for Dune.
 	if err := upsertIdentifier(ctx, tx, "openlibrary", "OL1234567W", "OL1234567W", "work", WorkIDDune, "resolved"); err != nil {
+		return err
+	}
+
+	// S5 fixtures: rich relationships and public/private asset eligibility.
+	if err := upsertSeries(ctx, tx, SeriesIDDuneSaga, "Dune Saga", "dune saga"); err != nil {
+		return err
+	}
+	if err := upsertSeriesMember(ctx, tx, SeriesIDDuneSaga, WorkIDDune, 1); err != nil {
+		return err
+	}
+	if err := upsertAudioPerformance(ctx, tx, ExprIDDuneAudioA, PersonIDNarratorA, OrgIDPenguin, false, 75600, "https://example.org/audio/dune-a-sample.mp3"); err != nil {
+		return err
+	}
+	if err := upsertAudioPerformance(ctx, tx, ExprIDDuneAudioB, PersonIDNarratorB, OrgIDPenguin, true, 68400, "https://example.org/audio/dune-b-sample.mp3"); err != nil {
+		return err
+	}
+	if err := upsertEditionAccessibility(ctx, tx, EdIDThreeBody, "braille"); err != nil {
+		return err
+	}
+	if err := upsertEditionAccessibility(ctx, tx, EdIDAlchemist, "large_print"); err != nil {
+		return err
+	}
+	if err := upsertAsset(ctx, tx, "work", WorkIDDune, "cover", "https://example.org/assets/dune-cover.jpg", "public", "openlibrary", "OL1234567W"); err != nil {
+		return err
+	}
+	if err := upsertAsset(ctx, tx, "work", WorkIDDune, "cover", "https://example.org/assets/dune-private.jpg", "private", "user-proposal", "pending-cover-1"); err != nil {
+		return err
+	}
+	if err := upsertSourceRecord(ctx, tx, "openlibrary", "OL1234567W", "sha256:dune", `{"title":"Dune","language":"en"}`); err != nil {
+		return err
+	}
+	if err := upsertSourceRecord(ctx, tx, "doab", "DOAB-9988", "sha256:arabic", `{"title":"الخيميائي","language":"ar"}`); err != nil {
 		return err
 	}
 
@@ -360,6 +430,90 @@ func upsertIdentifier(ctx context.Context, tx *sql.Tx, namespace, normalized, ra
 		namespace, normalized, raw, targetType, targetID, status)
 	if err != nil {
 		return fmt.Errorf("catalog: upsert identifier: %w", err)
+	}
+	return nil
+}
+
+func upsertSeries(ctx context.Context, tx *sql.Tx, id, title, normalized string) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO bookdb.series (series_id, canonical_title, normalized_title)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (series_id) DO UPDATE SET
+			canonical_title = EXCLUDED.canonical_title,
+			normalized_title = EXCLUDED.normalized_title`,
+		id, title, normalized)
+	if err != nil {
+		return fmt.Errorf("catalog: upsert series: %w", err)
+	}
+	return nil
+}
+
+func upsertSeriesMember(ctx context.Context, tx *sql.Tx, seriesID, workID string, position int) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO bookdb.series_members (series_id, work_id, position)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (series_id, work_id) DO UPDATE SET
+			position = EXCLUDED.position`,
+		seriesID, workID, position)
+	if err != nil {
+		return fmt.Errorf("catalog: upsert series member: %w", err)
+	}
+	return nil
+}
+
+func upsertAudioPerformance(ctx context.Context, tx *sql.Tx, expressionID, narratorID, producerID string, abridged bool, durationSec int, sampleURL string) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO bookdb.audio_performances (expression_id, narrator_id, producer_id, is_abridged, duration_sec, sample_url)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (expression_id, narrator_id) DO UPDATE SET
+			producer_id = EXCLUDED.producer_id,
+			is_abridged = EXCLUDED.is_abridged,
+			duration_sec = EXCLUDED.duration_sec,
+			sample_url = EXCLUDED.sample_url`,
+		expressionID, narratorID, producerID, abridged, durationSec, sampleURL)
+	if err != nil {
+		return fmt.Errorf("catalog: upsert audio performance: %w", err)
+	}
+	return nil
+}
+
+func upsertEditionAccessibility(ctx context.Context, tx *sql.Tx, editionID, feature string) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO bookdb.edition_accessibility (edition_id, feature)
+		VALUES ($1, $2)
+		ON CONFLICT (edition_id, feature) DO NOTHING`,
+		editionID, feature)
+	if err != nil {
+		return fmt.Errorf("catalog: upsert edition accessibility: %w", err)
+	}
+	return nil
+}
+
+func upsertAsset(ctx context.Context, tx *sql.Tx, entityType, entityID, assetKind, url, eligibility, sourceName, sourceKey string) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO bookdb.assets (entity_type, entity_id, asset_kind, url, eligibility, source_name, source_key)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (entity_type, entity_id, asset_kind, url) DO UPDATE SET
+			eligibility = EXCLUDED.eligibility,
+			source_name = EXCLUDED.source_name,
+			source_key = EXCLUDED.source_key`,
+		entityType, entityID, assetKind, url, eligibility, sourceName, sourceKey)
+	if err != nil {
+		return fmt.Errorf("catalog: upsert asset: %w", err)
+	}
+	return nil
+}
+
+func upsertSourceRecord(ctx context.Context, tx *sql.Tx, sourceName, sourceKey, contentHash, payload string) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO bookdb.source_records (source_name, source_key, content_hash, payload)
+		VALUES ($1, $2, $3, $4::jsonb)
+		ON CONFLICT (source_name, source_key) DO UPDATE SET
+			content_hash = EXCLUDED.content_hash,
+			payload = EXCLUDED.payload`,
+		sourceName, sourceKey, contentHash, payload)
+	if err != nil {
+		return fmt.Errorf("catalog: upsert source record: %w", err)
 	}
 	return nil
 }
