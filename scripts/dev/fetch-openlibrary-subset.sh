@@ -120,4 +120,3 @@ echo "Manifest: ${MANIFEST_FILE}"
 echo ""
 echo "To ingest:"
 echo "  bookdb ingest --file ${OUTPUT_FILE} --snapshot-id ${SNAPSHOT_ID}"
-

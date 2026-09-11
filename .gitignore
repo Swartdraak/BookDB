@@ -6,3 +6,11 @@ out/
 
 # Local acceptance reports and scratch (never committed)
 .local/
+
+# Node
+web/node_modules/
+web/dist/
+
+# IDE
+.idea/
+*.iml
