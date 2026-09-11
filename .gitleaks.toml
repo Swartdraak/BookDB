@@ -1,0 +1,15 @@
+title = "BookDB gitleaks configuration"
+
+# Allowlist for test fixture values that are deliberately not real secrets.
+# These are used in acceptance test scripts to verify error handling.
+
+[allowlist]
+description = "Test fixture values in acceptance scripts"
+paths = [
+  '''scripts/acceptance/.*''',
+]
+regexes = [
+  # Deliberately invalid API key used to test 401 responses.
+  '''not-a-real-key''',
+]
+
