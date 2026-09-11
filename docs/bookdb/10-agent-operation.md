@@ -12,7 +12,8 @@ The primary agent coordinates one ready issue and can implement it directly. Del
 | Fix CI, review code, merge eligible ordinary PR, delete its safely merged branch | Autonomous after required checks/review; do not bypass platform rules |
 | Deploy/restart disposable development/test services and execute stage tests | Autonomous within the named test environment |
 | Advance a stage without a human gate | Autonomous when acceptance evidence passes |
-| Advance S2/S5/S7/S8 human gate | Requires real human acceptance of the candidate |
+| Advance S5/S7/S8 human gate | Requires real human acceptance of the candidate |
+| Advance S2 (human review deferred to S5) | Autonomous after automated acceptance; S2 human procedure runs during S5 review |
 | Publish GA | Allowed only after S8 human acceptance of the exact RC; no untested rebuild |
 | Production data destruction, force-push shared history, disable security controls, unrequested production deployment | Not implied by routine development authority |
 

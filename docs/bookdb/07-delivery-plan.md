@@ -6,7 +6,7 @@ Work through small issue-linked PRs within each stage. Every PR changes testable
 
 `python3 scripts/project/acceptance.py S2 --describe` prints a stage's acceptance contract. `python3 scripts/project/acceptance.py S2` runs its implemented `scripts/acceptance/s2.sh`. Missing runners fail as **NOT IMPLEMENTED**. The package supplies the dispatcher and contracts; agents must implement real runners with the corresponding application changes. Never add no-op runners to make a stage green.
 
-The human gates are S2, S5, S7 and S8. Other stages still have human-runnable instructions, but their completion can be established by automated evidence. At a gate, stage automation and review finish first; prepare a working environment and one consolidated test handoff, then stop for the owner. Human gate issues remain open until actual human results are recorded. If the owner finds a defect, reopen the affected implementation issue, fix and retest, and resubmit only the relevant human steps plus necessary regression checks.
+The human gates are S5, S7 and S8. S2 human review is deferred to S5 and is not an independent stop. Other stages still have human-runnable instructions, but their completion can be established by automated evidence. At a gate, stage automation and review finish first; prepare a working environment and one consolidated test handoff, then stop for the owner. Human gate issues remain open until actual human results are recorded. If the owner finds a defect, reopen the affected implementation issue, fix and retest, and resubmit only the relevant human steps plus necessary regression checks.
 
 If an unrelated credential/admin capability blocks GitHub Projects/Wiki setup, log one capability issue and continue the ready application work. If a mandatory application or human acceptance criterion is blocked, the stage is not complete. Do not invent reasons to request human testing for routine unit/integration work.
 
@@ -16,7 +16,7 @@ If an unrelated credential/admin capability blocks GitHub Projects/Wiki setup, l
 | --- | --- | --- |
 | S0 | Adopt the package and run the preserved application | Automated completion |
 | S1 | Key-protected canonical catalog API | Automated completion |
-| S2 | First real-source catalog in the WebUI | Yes |
+| S2 | First real-source catalog in the WebUI | Deferred to S5 |
 | S3 | Cross-source reconciliation and durable identity | Automated completion |
 | S4 | Accounts, moderation and administrator controls | Automated completion |
 | S5 | Rich multilingual and multi-format catalog experience | Yes |
@@ -92,14 +92,14 @@ If an unrelated credential/admin capability blocks GitHub Projects/Wiki setup, l
 
 **Human procedure:** Fresh-install or upgrade using the runbook, launch the bounded source job, find five named records from its manifest in the WebUI, inspect an edition and source provenance, then test the API key path.
 
-**Exit condition:** The first real-data product is usable. Prepare the exact commit, URLs, credentials setup, fixture list, expected results and reset instructions; stop for human acceptance before S3.
+**Exit condition:** The first real-data product is usable. Prepare the exact commit, URLs, credentials setup, fixture list, expected results and reset instructions. S2 human review is deferred to S5; proceed to S3 after automated acceptance passes.
 
 **Initial issue slices:**
 
 - `S2-IMPORT` — **Deliver resumable Open Library snapshot ingestion.** Use the approved field subset, durable job state, source manifests and idempotency.
 - `S2-SEARCH` — **Project canonical catalog into search.** Deliver transactional outbox, NATS redelivery handling and OpenSearch reads.
 - `S2-BROWSE` — **Deliver real-data search and detail UI.** Implement minimal local-admin session access plus search/results/work/edition navigation with honest empty/error states.
-- `S2-ACCEPT` — **Human acceptance of the first real-data catalog.** Run the S2 human procedure; an AI agent may prepare evidence but cannot close this gate.
+- `S2-ACCEPT` — **Human acceptance of the first real-data catalog (deferred to S5).** Run the S2 human procedure during the consolidated S5 review; an AI agent may prepare evidence but cannot close this gate. Linked to S5-ACCEPT.
 
 ## S3 — Cross-source reconciliation and durable identity
 
