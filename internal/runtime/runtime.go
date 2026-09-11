@@ -60,6 +60,8 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return runKey(ctx, args[1:], stdout, stderr)
 	case "fixtures":
 		return runFixtures(args[1:], stdout, stderr)
+	case "ingest":
+		return runIngest(ctx, args[1:], stdout, stderr)
 	case "api":
 		return runService(ctx, "api", stdout, stderr)
 	case "scheduler":
