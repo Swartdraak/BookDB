@@ -315,6 +315,12 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 		// S3 reconciliation endpoints.
 		reconAPI := api.NewReconciliationServer(dbPool)
 		mux.Handle("/api/v1/reconciliation/", reconAPI.Handler())
+
+		// S4 auth and moderation endpoints.
+		authAPI := api.NewAuthServer(dbPool)
+		mux.Handle("/api/v1/auth/", authAPI.Handler())
+		mux.Handle("/api/v1/proposals", authAPI.Handler())
+		mux.Handle("/api/v1/users/", authAPI.Handler())
 	}
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -650,4 +656,3 @@ func newSearchFn(ctx context.Context, cfg *config.Config, db *sql.DB) func(entit
 		return indexer.Search(ctx, entity, query, limit)
 	}
 }
-

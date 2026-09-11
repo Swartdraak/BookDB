@@ -39,7 +39,20 @@ func Open(ctx context.Context, dsn string, maxOpen, maxIdle int, maxLifetime tim
 // the entry point used by the `bookdb migrate` command and readiness tooling,
 // where a real database/sql handle is available rather than the narrow DB
 // interface used by unit tests.
+//
+// Migration application is guarded by a session-level advisory lock so that
+// concurrent callers (for example, multiple test packages sharing one
+// database) serialize on the migration step instead of racing to create the
+// same objects. The lock is released when the session ends.
 func RunUp(ctx context.Context, db *sql.DB) (StatusReport, error) {
+	// Serialize concurrent migration runs on this database. The lock key is an
+	// arbitrary stable constant; it only needs to be the same for all callers.
+	if _, err := db.ExecContext(ctx, `SELECT pg_advisory_lock(734211990)`); err != nil {
+		return StatusReport{}, fmt.Errorf("database: acquire migration lock: %w", err)
+	}
+	defer func() {
+		_, _ = db.ExecContext(context.Background(), `SELECT pg_advisory_unlock(734211990)`)
+	}()
 	return DefaultMigrator().Up(ctx, &sqlMigrator{db: db})
 }
 
