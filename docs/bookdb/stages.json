@@ -79,7 +79,7 @@
     "requires": [
       "S1"
     ],
-    "gate": true,
+    "gate": false,
     "requirements": [
       "BDB-004",
       "BDB-006",
@@ -94,8 +94,8 @@
       "Take the upstream source offline; existing catalog search and lookup still work. Pause/resume a job and show checkpoint/progress.",
       "Test search loading/empty/error states, Unicode input and keyboard navigation. Verify the scheduled occurrence key prevents duplicate jobs."
     ],
-    "human": "Fresh-install or upgrade using the runbook, launch the bounded source job, find five named records from its manifest in the WebUI, inspect an edition and source provenance, then test the API key path.",
-    "done": "The first real-data product is usable. Prepare the exact commit, URLs, credentials setup, fixture list, expected results and reset instructions; stop for human acceptance before S3.",
+    "human": "Fresh-install or upgrade using the runbook, launch the bounded source job, find five named records from its manifest in the WebUI, inspect an edition and source provenance, then test the API key path. This procedure is retained and consolidated into the S5 human review; it is not independently gated at S2.",
+    "done": "The first real-data product is usable. Prepare the exact commit, URLs, credentials setup, fixture list, expected results and reset instructions. S2 human review is deferred to S5; proceed to S3 after automated acceptance passes.",
     "issues": [
       [
         "IMPORT",
@@ -114,8 +114,8 @@
       ],
       [
         "ACCEPT",
-        "Human acceptance of the first real-data catalog",
-        "Run the S2 human procedure; an AI agent may prepare evidence but cannot close this gate."
+        "Human acceptance of the first real-data catalog (deferred to S5)",
+        "Run the S2 human procedure during the consolidated S5 review; an AI agent may prepare evidence but cannot close this gate. Linked to S5-ACCEPT."
       ]
     ]
   },

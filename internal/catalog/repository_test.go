@@ -76,9 +76,9 @@ func TestListEditionsForWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListEditionsForWork: %v", err)
 	}
-	// Dune has print, ebook, and two audio editions.
-	if len(editions) != 4 {
-		t.Fatalf("expected 4 editions for Dune, got %d", len(editions))
+	// Dune has print, ebook, two audio, and the Korean print edition.
+	if len(editions) != 5 {
+		t.Fatalf("expected 5 editions for Dune, got %d", len(editions))
 	}
 }
 
@@ -155,6 +155,70 @@ func TestTwoSameLanguageNarrationsAreDistinct(t *testing.T) {
 	}
 	if exprA.ExpressionID == exprB.ExpressionID {
 		t.Fatal("expected distinct expression IDs for same-language narrations")
+	}
+}
+
+// TestTranslationIsExpressionOfSameWork asserts the S1 correction: the Korean
+// translation of Dune is an Expression of the single Dune Work, not a second
+// canonical Work. It also confirms the translator credit and that the two
+// same-title works remain distinct.
+func TestTranslationIsExpressionOfSameWork(t *testing.T) {
+	db := openTestDB(t)
+	repo := NewSQLRepository(db)
+	ctx := context.Background()
+
+	// The Korean expression belongs to the Dune Work.
+	exprKO, err := repo.GetExpression(ctx, ExprIDDuneKO)
+	if err != nil {
+		t.Fatalf("GetExpression KO: %v", err)
+	}
+	if exprKO.WorkID != WorkIDDune {
+		t.Fatalf("expected Korean expression to belong to Dune work %s, got %s", WorkIDDune, exprKO.WorkID)
+	}
+	if exprKO.LanguageCode != "ko" {
+		t.Fatalf("expected Korean expression language ko, got %q", exprKO.LanguageCode)
+	}
+
+	// The retired second Work must not exist.
+	if _, err := repo.GetWork(ctx, "11111111-1111-4111-8111-111111111112"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected retired Korean work to be absent, got %v", err)
+	}
+
+	// The Dune Work now has 5 editions (print, ebook, 2 audio, Korean print).
+	editions, err := repo.ListEditionsForWork(ctx, WorkIDDune)
+	if err != nil {
+		t.Fatalf("ListEditionsForWork: %v", err)
+	}
+	if len(editions) != 5 {
+		t.Fatalf("expected 5 editions for Dune (incl. Korean), got %d", len(editions))
+	}
+
+	// The Korean expression carries a translator credit.
+	credits, err := repo.ListCreditsForTarget(ctx, "expression", ExprIDDuneKO)
+	if err != nil {
+		t.Fatalf("ListCreditsForTarget: %v", err)
+	}
+	foundTranslator := false
+	for _, c := range credits {
+		if c.Role == "translator" && c.PersonID != nil && *c.PersonID == PersonIDTranslator {
+			foundTranslator = true
+		}
+	}
+	if !foundTranslator {
+		t.Fatalf("expected a translator credit on the Korean expression, got %+v", credits)
+	}
+
+	// The two same-title works remain distinct.
+	seaA, err := repo.GetWork(ctx, WorkIDSameNameA)
+	if err != nil {
+		t.Fatalf("GetWork Silent Sea A: %v", err)
+	}
+	seaB, err := repo.GetWork(ctx, WorkIDSameNameB)
+	if err != nil {
+		t.Fatalf("GetWork Silent Sea B: %v", err)
+	}
+	if seaA.WorkID == seaB.WorkID {
+		t.Fatal("expected distinct works for same-title hard negatives")
 	}
 }
 

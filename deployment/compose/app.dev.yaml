@@ -6,9 +6,7 @@
 # This file declares the BookDB services (api, scheduler, workers). It
 # assumes a built `bookdb` image is available. In CI and in dev, use the
 # Makefile targets to build the image first.
-
 name: bookdb
-
 services:
   bookdb-api:
     image: bookdb/bookdb:dev
@@ -16,6 +14,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: bookdb-api
+    networks: [bookdb]
     depends_on:
       pgbouncer:      {condition: service_healthy}
       nats:           {condition: service_healthy}
@@ -27,7 +26,7 @@ services:
       - "127.0.0.1:9090:9090"   # metrics (dev only)
     environment:
       BOOKDB_ENV: development
-      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb?sslmode=disable
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:5432/bookdb?sslmode=disable
       BOOKDB_DATABASE_URL_DIRECT: postgres://bookdb:bookdb@postgres:5432/bookdb?sslmode=disable
       BOOKDB_NATS_URL: nats://nats:4222
       BOOKDB_VALKEY_URL: redis://valkey:6379/0
@@ -45,33 +44,33 @@ services:
       - ./config/source-registry.yaml:/app/config/source-registry.yaml:ro
     command: ["api"]
     restart: unless-stopped
-
   bookdb-scheduler:
     image: bookdb/bookdb:dev
     container_name: bookdb-scheduler
+    networks: [bookdb]
     depends_on:
       pgbouncer: {condition: service_healthy}
       nats:      {condition: service_healthy}
     environment:
       BOOKDB_ENV: development
-      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb?sslmode=disable
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:5432/bookdb?sslmode=disable
       BOOKDB_NATS_URL: nats://nats:4222
       BOOKDB_LOG_LEVEL: info
     volumes:
       - ./config/source-registry.yaml:/app/config/source-registry.yaml:ro
     command: ["scheduler"]
     restart: unless-stopped
-
   bookdb-worker-ingest:
     image: bookdb/bookdb:dev
     container_name: bookdb-worker-ingest
+    networks: [bookdb]
     depends_on:
       pgbouncer: {condition: service_healthy}
       nats:      {condition: service_healthy}
       seaweed-s3: {condition: service_started}
     environment:
       BOOKDB_ENV: development
-      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb?sslmode=disable
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:5432/bookdb?sslmode=disable
       BOOKDB_NATS_URL: nats://nats:4222
       BOOKDB_S3_ENDPOINT: http://seaweed-s3:8333
       BOOKDB_S3_ACCESS_KEY: bookdb
@@ -80,30 +79,30 @@ services:
       BOOKDB_S3_FORCE_PATH_STYLE: "true"
     command: ["worker", "ingest"]
     restart: unless-stopped
-
   bookdb-worker-reconcile:
     image: bookdb/bookdb:dev
     container_name: bookdb-worker-reconcile
+    networks: [bookdb]
     depends_on:
       pgbouncer: {condition: service_healthy}
       nats:      {condition: service_healthy}
     environment:
       BOOKDB_ENV: development
-      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb?sslmode=disable
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:5432/bookdb?sslmode=disable
       BOOKDB_NATS_URL: nats://nats:4222
     command: ["worker", "reconcile"]
     restart: unless-stopped
-
   bookdb-worker-index:
     image: bookdb/bookdb:dev
     container_name: bookdb-worker-index
+    networks: [bookdb]
     depends_on:
       pgbouncer:  {condition: service_healthy}
       nats:       {condition: service_healthy}
       opensearch: {condition: service_started}
     environment:
       BOOKDB_ENV: development
-      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:6432/bookdb?sslmode=disable
+      BOOKDB_DATABASE_URL: postgres://bookdb:bookdb@pgbouncer:5432/bookdb?sslmode=disable
       BOOKDB_NATS_URL: nats://nats:4222
       BOOKDB_OPENSEARCH_URL: http://opensearch:9200
     command: ["worker", "index"]

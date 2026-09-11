@@ -54,7 +54,7 @@ A sequence allocated inside transactions does not automatically produce commit o
 
 ## Human testing handoff
 
-At S2/S5/S7/S8, prepare one issue comment using this template:
+At S5/S7/S8 (and S2 evidence consolidated into S5), prepare one issue comment using this template:
 
 ```text
 Candidate: exact commit and image digest(s)

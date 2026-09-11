@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,7 +18,9 @@ import (
 	"time"
 
 	"github.com/bookdb/bookdb/internal/api"
+	"github.com/bookdb/bookdb/internal/apikey"
 	"github.com/bookdb/bookdb/internal/auth"
+	"github.com/bookdb/bookdb/internal/catalog"
 	"github.com/bookdb/bookdb/internal/config"
 	"github.com/bookdb/bookdb/internal/database"
 	"github.com/bookdb/bookdb/internal/health"
@@ -53,6 +56,10 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return runDoctor(stdout, stderr)
 	case "migrate":
 		return runMigrate(stderr)
+	case "key":
+		return runKey(ctx, args[1:], stdout, stderr)
+	case "fixtures":
+		return runFixtures(args[1:], stdout, stderr)
 	case "api":
 		return runService(ctx, "api", stdout, stderr)
 	case "scheduler":
@@ -505,4 +512,108 @@ func newRateLimiter(ctx context.Context, cfg *config.Config) *ratelimit.Limiter 
 	limit := 100 // requests per window per key
 	window := time.Minute
 	return ratelimit.New(client, cfg.Valkey.KeyPrefix, limit, window)
+}
+
+// runKey handles the `bookdb key create` subcommand.
+func runKey(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || args[0] != "create" {
+		fmt.Fprintln(stderr, "Usage: bookdb key create --name <name> --scope <scope>")
+		return 2
+	}
+	fs := flag.NewFlagSet("key create", flag.ExitOnError)
+	name := fs.String("name", "dev-key", "Key name")
+	scope := fs.String("scope", "catalog:read", "Key scope")
+	_ = fs.Parse(args[1:])
+
+	cfg, _, err := loadRuntimeConfig()
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if err := cfg.Validate(); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+
+	dsn := cfg.Database.DSNDirect
+	if strings.TrimSpace(dsn) == "" {
+		dsn = cfg.Database.DSN
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	db, err := database.Open(ctx, dsn, cfg.Database.MaxOpenConns, cfg.Database.MaxIdleConns, cfg.Database.ConnMaxLifetime)
+	if err != nil {
+		fmt.Fprintf(stderr, "bookdb key: %v\n", err)
+		return 1
+	}
+	defer db.Close()
+
+	store := apikey.NewStore(db, apiMacKey(cfg))
+	issued, err := store.Create(ctx, *name, []string{*scope}, nil, nil)
+	if err != nil {
+		fmt.Fprintf(stderr, "bookdb key: %v\n", err)
+		return 1
+	}
+
+	fmt.Fprintf(stdout, "Key ID:     %s\n", issued.KeyID)
+	fmt.Fprintf(stdout, "Name:       %s\n", issued.Name)
+	fmt.Fprintf(stdout, "Scopes:     %s\n", strings.Join(issued.Scopes, ", "))
+	fmt.Fprintf(stdout, "Secret:     %s\n", issued.Secret)
+	fmt.Fprintf(stdout, "\nSave this secret now — it will not be shown again.\n")
+	return 0
+}
+
+// runFixtures loads the S1 synthetic fixture catalog into the database, or
+// verifies it read-only with --verify.
+func runFixtures(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("fixtures", flag.ExitOnError)
+	verify := fs.Bool("verify", false, "Read-only verification of the fixture graph (no writes)")
+	_ = fs.Parse(args)
+
+	cfg, _, err := loadRuntimeConfig()
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if err := cfg.Validate(); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+
+	dsn := cfg.Database.DSNDirect
+	if strings.TrimSpace(dsn) == "" {
+		dsn = cfg.Database.DSN
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	db, err := database.Open(ctx, dsn, cfg.Database.MaxOpenConns, cfg.Database.MaxIdleConns, cfg.Database.ConnMaxLifetime)
+	if err != nil {
+		fmt.Fprintf(stderr, "bookdb fixtures: %v\n", err)
+		return 1
+	}
+	defer db.Close()
+
+	if *verify {
+		rep, err := catalog.VerifyFixtures(ctx, db)
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(rep)
+		if err != nil {
+			fmt.Fprintf(stderr, "bookdb fixtures --verify: %v\n", err)
+			return 1
+		}
+		fmt.Fprintln(stderr, "bookdb fixtures --verify: OK")
+		return 0
+	}
+
+	if err := catalog.LoadFixtures(ctx, db); err != nil {
+		fmt.Fprintf(stderr, "bookdb fixtures: %v\n", err)
+		return 1
+	}
+	fmt.Fprintln(stderr, "bookdb fixtures: loaded successfully")
+	return 0
 }

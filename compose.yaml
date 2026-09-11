@@ -74,6 +74,7 @@ services:
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 200
       DEFAULT_POOL_SIZE: 20
+      AUTH_TYPE: scram-sha-256
     ports:
       - "127.0.0.1:6432:5432"
     healthcheck:
@@ -188,7 +189,7 @@ services:
   seaweed-s3:
     image: chrislusf/seaweedfs:4.22
     container_name: bookdb-seaweed-s3
-    command: ["s3", "-filer=seaweed-filer:8888", "-port=8333", "-port.public=8333"]
+    command: ["s3", "-filer=seaweed-filer:8888", "-port=8333"]
     ports:
       - "127.0.0.1:8333:8333"
     depends_on: [seaweed-filer]
