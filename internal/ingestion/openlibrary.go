@@ -297,14 +297,17 @@ func ParseOpenLibraryLine(line string) (*Record, error) {
 
 	rec := &Record{RawJSON: []byte(line)}
 
-	// Determine source type and key.
+	// Determine source type and key — first pass strips known prefixes.
 	if key, ok := raw["key"].(string); ok {
 		rec.SourceKey = strings.TrimPrefix(key, "/works/")
 		rec.SourceKey = strings.TrimPrefix(rec.SourceKey, "/editions/")
+		rec.SourceKey = strings.TrimPrefix(rec.SourceKey, "/books/")
 		rec.SourceKey = strings.TrimPrefix(rec.SourceKey, "/authors/")
 	}
 
 	// Determine type from the key prefix.
+	// OL complete dumps use two edition key formats: /editions/OL...M (canonical)
+	// and the legacy /books/OL...M format. Both map to source_type = "edition".
 	if key, ok := raw["key"].(string); ok {
 		switch {
 		case strings.HasPrefix(key, "/works/"):
@@ -313,6 +316,9 @@ func ParseOpenLibraryLine(line string) (*Record, error) {
 		case strings.HasPrefix(key, "/editions/"):
 			rec.SourceType = "edition"
 			rec.SourceKey = strings.TrimPrefix(key, "/editions/")
+		case strings.HasPrefix(key, "/books/"):
+			rec.SourceType = "edition"
+			rec.SourceKey = strings.TrimPrefix(key, "/books/")
 		case strings.HasPrefix(key, "/authors/"):
 			rec.SourceType = "author"
 			rec.SourceKey = strings.TrimPrefix(key, "/authors/")
@@ -321,9 +327,28 @@ func ParseOpenLibraryLine(line string) (*Record, error) {
 		}
 	}
 
-	// Extract title.
+	// Extract title. For author records, OL uses "name" not "title".
 	if title, ok := raw["title"].(string); ok {
 		rec.Title = title
+	} else if rec.SourceType == "author" {
+		if name, ok := raw["name"].(string); ok {
+			rec.Title = name
+		}
+	}
+
+	// Extract author references from works: authors[].author.key
+	if rec.SourceType == "work" {
+		if authRefs, ok := raw["authors"].([]any); ok {
+			for _, ar := range authRefs {
+				if m, ok := ar.(map[string]any); ok {
+					if authObj, ok := m["author"].(map[string]any); ok {
+						if k, ok := authObj["key"].(string); ok {
+							rec.Authors = append(rec.Authors, strings.TrimPrefix(k, "/authors/"))
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// Extract language.
