@@ -1,0 +1,312 @@
+# Onyx Project Contract — BookDB
+#
+# Authoritative, machine-readable command contract for the BookDB repository.
+# A fresh isolated workspace can use this contract to bootstrap and run every
+# acceptance gate. Commands below were VERIFIED by the onboarding audit on
+# 2026-09-17 (base SHA fce54b5cd459d7f17f1c0cb7d8c1ed47b9a1c43e) in a Linux
+# x86_64 Docker container (Debian trixie) with Go 1.26.8 and Node v20.
+#
+# Verification status of each command as of the audit:
+#   passed  — executed and succeeded
+#   failed  — executed and failed (pre-existing fault; recorded, not hidden)
+#   skipped — not executed because the required tool/service is absent in the
+#             audit environment (Docker daemon unavailable); recorded honestly
+#
+# Environment note: the audit container mounts /tmp as noexec. Go test binaries
+# are written to $TMPDIR, so run tests with TMPDIR (and GOCACHE) on a
+# writable, executable filesystem (e.g. /workspace) — the `make test` gate
+# passes once that is set.
+
+name: bookdb
+version: 1.0.0
+canonical_url: https://github.com/Swartdraak/BookDB
+repo_id: 1358988032
+default_branch: main
+license:
+  server_and_cli: AGPL-3.0-or-later
+  sdk_and_api_definitions: Apache-2.0
+module_path: github.com/bookdb/bookdb
+
+components:
+  - name: bookdb
+    path: cmd/bookdb
+    kind: server-cli
+    language: go
+    description: Single Go binary; subcommands include `api`.
+  - name: web
+    path: web
+    kind: webui
+    language: typescript-react
+    description: React + Vite + TypeScript WebUI (search, work detail, edition compare).
+  - name: api
+    path: api
+    kind: openapi
+    description: OpenAPI outline (api/openapi-outline.yaml, OpenAPI 3.1.0).
+  - name: internal
+    path: internal
+    kind: library
+    description: Go internal packages (api, auth, catalog, config, database,
+      events, health, ingestion, logging, messaging/nats, ratelimit,
+      reconciliation, runtime, search/opensearch, storage/s3, version,
+      testsupport/devservices).
+
+bootstrap:
+  go: ">=1.26"
+  node: ">=20"          # CI pins Node 22; v20 verified for install/checks.
+  python: ">=3.9"
+  docker: required for compose / image / smoke gates only.
+  steps:
+    - make setup        # go mod download (verified: passed)
+    - npm --prefix web ci  # install lockfile dependencies (verified: passed)
+
+commands:
+  fmt-check:
+    command: make fmt-check
+    gate: true
+    verified: failed
+    evidence: >
+      8 Go files are not gofmt-clean at base SHA (pre-existing fault):
+      internal/search/opensearch/indexer.go, internal/ingestion/openlibrary.go,
+      internal/reconciliation/reconcile.go, internal/auth/auth.go,
+      internal/api/search.go, internal/api/auth.go,
+      internal/api/reconciliation.go, internal/api/helpers.go.
+      Fix with `make fmt` (gofmt -w) or individually; do not treat as success.
+  lint:
+    command: make lint
+    gate: true
+    verified: passed
+    evidence: "go vet over all 21 Go packages: no issues (exit 0)."
+  test:
+    command: make test
+    gate: true
+    verified: passed
+    requires: "TMPDIR and GOCACHE on an executable filesystem (container /tmp is noexec)."
+    evidence: >
+      14 packages with tests all `ok`; 6 packages have no test files.
+      Fails with `fork/exec .../X.test: permission denied` if TMPDIR/GOCACHE
+      remain on the noexec /tmp mount — an environment constraint, not a code fault.
+  build:
+    command: make build
+    gate: true
+    verified: passed
+    evidence: "go build over all 21 packages: success (exit 0)."
+  entrypoint-build:
+    command: go build -o /tmp/bookdb ./cmd/bookdb
+    gate: true
+    verified: passed
+    evidence: >
+      Runtime entry point builds (14,168,013-byte binary). Confirms the S0
+      "missing entry point" concern is resolved at this SHA; cmd/bookdb exists
+      and compiles.
+  openapi-validate:
+    command: make openapi-validate
+    gate: true
+    verified: passed
+    evidence: "validated api/openapi-outline.yaml (3.1.0) (exit 0)."
+  web-format:
+    command: npm --prefix web run format
+    gate: true
+    verified: failed
+    evidence: >
+      prettier --check reports 6 unformatted files (pre-existing fault):
+      web/src/api/client.ts, web/src/app/pages/EditionComparePage.tsx,
+      web/src/app/pages/OverviewPage.tsx, web/src/app/pages/SearchPage.tsx,
+      web/src/app/pages/WorkDetailPage.tsx, web/src/styles/global.css.
+      Fix with `npm --prefix web run format:write`.
+  web-typecheck:
+    command: npm --prefix web run typecheck
+    gate: true
+    verified: passed
+    evidence: "tsc --noEmit clean (exit 0)."
+  web-lint:
+    command: npm --prefix web run lint
+    gate: true
+    verified: failed
+    evidence: >
+      eslint reports 2 errors (pre-existing fault) in web/src/api/client.ts:
+      138:18 and 145:14, @typescript-eslint/no-unsafe-declaration-merging
+      ("Unsafe declaration merging between classes and interfaces").
+  web-test:
+    command: npm --prefix web run test
+    gate: true
+    verified: passed
+    evidence: "vitest run: 1 test file, 3/3 tests passed (1.65s)."
+  web-build:
+    command: npm --prefix web run build
+    gate: true
+    verified: passed
+    evidence: >
+      vite build: 50 modules transformed, dist emitted (index.html + JS 255.41 kB,
+      CSS 2.43 kB) (exit 0).
+  project-docs:
+    command: python3 scripts/project/check_docs.py
+    gate: true
+    verified: passed
+    evidence: "Active documentation: 0 error(s). (exit 0)"
+  ci-local:
+    command: make ci
+    gate: true
+    verified: not-run
+    note: >
+      Aggregates fmt-check lint test build openapi-validate. It will report the
+      same pre-existing fmt-check failure; run the individual gates instead and
+      triage fmt-check before relying on the aggregate.
+  compose-up:
+    command: make compose-up
+    gate: integration
+    verified: skipped
+    evidence: "Docker daemon unavailable in audit container; not executed."
+  compose-app-build:
+    command: make compose-app-build
+    gate: integration
+    verified: skipped
+    evidence: "Docker daemon unavailable in audit container; not executed."
+  compose-app-up:
+    command: make compose-app-up
+    gate: integration
+    verified: skipped
+    evidence: "Docker daemon unavailable in audit container; not executed."
+  integration:
+    command: make integration
+    gate: integration
+    verified: skipped
+    evidence: >
+      scripts/dev/compose-smoke.sh requires docker compose (postgres, pgbouncer,
+      nats, valkey, opensearch, seaweedfs). Docker daemon unavailable; not executed.
+  app-image:
+    command: docker build --tag bookdb-ci:local .
+    gate: integration
+    verified: skipped
+    evidence: >
+      Dockerfile builds from golang:1.26-alpine -> alpine:3.20, entrypoint
+      `bookdb api`. Docker daemon unavailable in audit container; not executed.
+  compose-down:
+    command: make compose-down
+    gate: maintenance
+    verified: not-run
+    note: "Stops the dev stack, preserving volumes. Use compose-reset for a disposable wipe."
+  compose-reset:
+    command: make compose-reset
+    gate: maintenance
+    verified: not-run
+    note: "Down AND delete volumes. Disposable reset only — never against a real catalog."
+
+runtime:
+  api:
+    start: docker compose -f compose.yaml -f deployment/compose/app.dev.yaml up -d --wait
+    health:
+      - "OpenSearch cluster health via GET http://127.0.0.1:9200/_cluster/health"
+      - "Postgres pg_isready -U bookdb -d bookdb (compose healthcheck)"
+    notes: >
+      Dev-only compose stack (NOT HA). Ports bound to 127.0.0.1 only:
+      postgres 5432, pgbouncer 6432, nats 4222/8222, valkey 6379,
+      opensearch 9200, seaweed 9333/8888/8333.
+  binary:
+    build: go build -o bookdb ./cmd/bookdb
+    api: ./bookdb api
+    config_dir: config/
+
+ci:
+  provider: github-actions
+  workflows:
+    - name: CI (go, webui, application-image, project-docs)
+      file: .github/workflows/ci.yml
+      triggers: pull_request, push:main, workflow_dispatch
+      gates:
+        go: ["make setup", "make fmt-check", "make lint", "make test", "make build", "make openapi-validate", "go build -o /tmp/bookdb ./cmd/bookdb"]
+        webui: ["npm --prefix web ci", "npm --prefix web run format", "npm --prefix web run typecheck", "npm --prefix web run lint", "npm --prefix web run test", "npm --prefix web run build"]
+        application-image: ["docker build --tag bookdb-ci:${{ github.sha }} ."]
+        project-docs: ["python3 scripts/project/check_docs.py"]
+    - name: Security Supply Chain (dependency-review, secret-scan, sbom-and-image-scan)
+      file: .github/workflows/security-supply-chain.yml
+      triggers: pull_request, schedule:cron 0 6 * * 1
+      gates:
+        dependency-review: "actions/dependency-review-action@v5 (fail-on-severity moderate, license-check)"
+        secret-scan: "gitleaks/gitleaks-action@v3"
+        sbom-image-scan: "anchore/sbom-action@v0 + aquasecurity/trivy-action@v0.36.0 (CRITICAL,HIGH, ignore-unfixed)"
+    - name: Compose Smoke
+      file: .github/workflows/compose-smoke.yml
+      triggers: pull_request (path-filtered), push main
+      gates:
+        smoke: "bash scripts/dev/compose-smoke.sh"
+
+autonomy_gates:
+  deploy:
+    authorized:
+      - isolated-testing
+      - semi-production-validation
+    prohibited:
+      - production
+      - enterprise
+    notes: >
+      Isolated/semi-production validation must use synthetic data, scoped
+      endpoints and a cleanup/rollback plan. Never promote a testing
+      environment to production or modify production routes/data/credentials.
+  human_acceptance:
+    gates: [S5, S7, S8]
+    notes: >
+      Stop at the explicit human acceptance gates with a testable candidate and
+      consolidated instructions. A maintainer comment with the exact candidate
+      and pass/fail is the authoritative record; never manufacture signoff.
+
+deployment:
+  reference_topology: deployment/HA_REFERENCE_TOPOLOGY.md
+  deployment_plan: deployment/DEPLOYMENT_PLAN.md
+  compose_files:
+    - compose.yaml
+    - deployment/compose/app.dev.yaml
+  pin_policy: "Release image tags are pinned via compose.pinned.yaml overlays; never :latest for release."
+  rollback: >
+    Roll back by redeploying the previously accepted image digest (recorded in
+    the human-acceptance handoff). Dev compose: `make compose-down` preserves
+    volumes; `make compose-reset` wipes disposable volumes.
+
+known_faults:
+  - id: F1
+    command: make fmt-check
+    severity: pre-existing
+    summary: "8 Go files not gofmt-clean."
+    files:
+      - internal/search/opensearch/indexer.go
+      - internal/ingestion/openlibrary.go
+      - internal/reconciliation/reconcile.go
+      - internal/auth/auth.go
+      - internal/api/search.go
+      - internal/api/auth.go
+      - internal/api/reconciliation.go
+      - internal/api/helpers.go
+    action: "Run `make fmt` and commit; or fix per-file. This will fail the `ci` Go job until fixed."
+  - id: F2
+    command: npm --prefix web run format
+    severity: pre-existing
+    summary: "6 WebUI files fail prettier --check."
+    files:
+      - web/src/api/client.ts
+      - web/src/app/pages/EditionComparePage.tsx
+      - web/src/app/pages/OverviewPage.tsx
+      - web/src/app/pages/SearchPage.tsx
+      - web/src/app/pages/WorkDetailPage.tsx
+      - web/src/styles/global.css
+    action: "Run `npm --prefix web run format:write` and commit; or fix per-file. Fails the `ci` WebUI job until fixed."
+  - id: F3
+    command: npm --prefix web run lint
+    severity: pre-existing
+    summary: "2 eslint errors in web/src/api/client.ts (no-unsafe-declaration-merging at 138:18 and 145:14)."
+    files:
+      - web/src/api/client.ts
+    action: "Resolve the unsafe class/interface declaration merging; fails the `ci` WebUI job until fixed."
+
+skipped_integrations:
+  - id: S1
+    area: docker-compose / runtime / image / smoke
+    reason: "Docker daemon unavailable in the audit container (Docker-in-Docker not enabled)."
+    commands:
+      - make compose-up
+      - make compose-app-build
+      - make compose-app-up
+      - make integration
+      - docker build --tag bookdb-ci:local .
+    disposition: >
+      Recorded as skipped, not failed. These gates are executed by GitHub
+      Actions (ci.yml application-image job and compose-smoke.yml) on PRs where
+      a Docker runner is available. No silent pass is claimed for them.
