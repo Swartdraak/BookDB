@@ -13,7 +13,8 @@ export function OverviewPage() {
         if (!cancelled) setReport(next);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load quality coverage');
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : 'Failed to load quality coverage');
       });
     return () => {
       cancelled = true;
@@ -27,7 +28,8 @@ export function OverviewPage() {
           <p className="eyebrow">Catalog quality</p>
           <h2>Coverage by language, format, and source.</h2>
           <p className="lede">
-            This dashboard reports known metadata fields and source evidence. Unknown values remain unknown.
+            This dashboard reports known metadata fields and source evidence. Unknown values remain
+            unknown.
           </p>
         </div>
 

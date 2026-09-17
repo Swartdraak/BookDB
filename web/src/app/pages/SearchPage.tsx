@@ -10,29 +10,30 @@ export function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const doSearch = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await searchWorks(query.trim());
-      setResults(res.results);
-      setTotal(res.total);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Search failed');
-    } finally {
-      setLoading(false);
-    }
-  }, [query]);
+  const doSearch = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!query.trim()) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await searchWorks(query.trim());
+        setResults(res.results);
+        setTotal(res.total);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Search failed');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [query],
+  );
 
   return (
     <div className="page-stack">
       <section className="surface-panel">
         <h2>Search the Catalog</h2>
-        <p className="lede">
-          Search across works, editions, and people in the BookDB catalog.
-        </p>
+        <p className="lede">Search across works, editions, and people in the BookDB catalog.</p>
         <form onSubmit={doSearch} className="search-form" role="search">
           <label htmlFor="search-input" className="visually-hidden">
             Search query
@@ -89,4 +90,3 @@ export function SearchPage() {
     </div>
   );
 }
-

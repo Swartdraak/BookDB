@@ -54,8 +54,8 @@ func (s *SearchServer) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"query":  query,
-		"total":  len(docs),
+		"query":   query,
+		"total":   len(docs),
 		"results": docs,
 	})
 }
@@ -121,11 +121,11 @@ func ProvenanceHandler(db *sql.DB) http.HandlerFunc {
 
 		for rows.Next() {
 			var (
-				sourceName string
-				sourceKey  string
+				sourceName  string
+				sourceKey   string
 				contentHash string
-				payload    []byte
-				createdAt  string
+				payload     []byte
+				createdAt   string
 			)
 			if err := rows.Scan(&sourceName, &sourceKey, &contentHash, &payload, &createdAt); err != nil {
 				continue

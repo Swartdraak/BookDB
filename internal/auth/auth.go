@@ -39,16 +39,16 @@ type User struct {
 
 // Session is an active browser session.
 type Session struct {
-	SessionID  uuid.UUID `json:"session_id"`
-	UserID     uuid.UUID `json:"user_id"`
-	CSRFToken  string    `json:"csrf_token"`
-	ExpiresAt  time.Time `json:"expires_at"`
+	SessionID uuid.UUID `json:"session_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	CSRFToken string    `json:"csrf_token"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 // AuthService handles authentication and session management.
 type AuthService struct {
-	db          *sql.DB
-	sessionTTL  time.Duration
+	db         *sql.DB
+	sessionTTL time.Duration
 }
 
 // NewAuthService creates an AuthService.
@@ -82,9 +82,9 @@ func (a *AuthService) Register(ctx context.Context, username, email, password, d
 // Login verifies credentials and creates a session.
 func (a *AuthService) Login(ctx context.Context, username, password string) (*User, *Session, error) {
 	var (
-		userID      uuid.UUID
+		userID       uuid.UUID
 		passwordHash string
-		u           User
+		u            User
 	)
 	err := a.db.QueryRowContext(ctx, `
 		SELECT user_id, password_hash, username, email, display_name, role, status
@@ -140,8 +140,8 @@ func (a *AuthService) Logout(ctx context.Context, sessionID uuid.UUID) error {
 // ValidateSession checks if a session is valid and returns the user.
 func (a *AuthService) ValidateSession(ctx context.Context, sessionID uuid.UUID) (*User, *Session, error) {
 	var (
-		s       Session
-		u       User
+		s Session
+		u User
 	)
 	err := a.db.QueryRowContext(ctx, `
 		SELECT s.session_id, s.user_id, s.csrf_token, s.expires_at,
@@ -413,4 +413,3 @@ func SHA256Hex(s string) string {
 func NormalizeUsername(username string) string {
 	return strings.ToLower(strings.TrimSpace(username))
 }
-
