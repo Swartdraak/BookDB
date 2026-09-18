@@ -63,14 +63,12 @@ commands:
   fmt-check:
     command: make fmt-check
     gate: true
-    verified: failed
+    verified: passed
     evidence: >
-      8 Go files are not gofmt-clean at base SHA (pre-existing fault):
-      internal/search/opensearch/indexer.go, internal/ingestion/openlibrary.go,
-      internal/reconciliation/reconcile.go, internal/auth/auth.go,
-      internal/api/search.go, internal/api/auth.go,
-      internal/api/reconciliation.go, internal/api/helpers.go.
-      Fix with `make fmt` (gofmt -w) or individually; do not treat as success.
+      Passed at PR #56 head (commit 2500b5b, branch
+      onyx/work-ci-repair-20260917): no unformatted files. Pre-existing fault
+      F1 (8 Go files not gofmt-clean at base 203d550d) was fixed by that commit;
+      re-verified exit 0 in the F3 repair run (2026-09-18).
   lint:
     command: make lint
     gate: true
@@ -106,13 +104,12 @@ commands:
   web-format:
     command: npm --prefix web run format
     gate: true
-    verified: failed
+    verified: passed
     evidence: >
-      prettier --check reports 6 unformatted files (pre-existing fault):
-      web/src/api/client.ts, web/src/app/pages/EditionComparePage.tsx,
-      web/src/app/pages/OverviewPage.tsx, web/src/app/pages/SearchPage.tsx,
-      web/src/app/pages/WorkDetailPage.tsx, web/src/styles/global.css.
-      Fix with `npm --prefix web run format:write`.
+      Passed at PR #56 head (commit 2500b5b, branch
+      onyx/work-ci-repair-20260917): "All matched files use Prettier code style!"
+      Pre-existing fault F2 (6 unformatted web files at base 203d550d) was fixed
+      by that commit; re-verified exit 0 in the F3 repair run (2026-09-18).
   web-typecheck:
     command: npm --prefix web run typecheck
     gate: true
@@ -121,11 +118,14 @@ commands:
   web-lint:
     command: npm --prefix web run lint
     gate: true
-    verified: failed
+    verified: passed
     evidence: >
-      eslint reports 2 errors (pre-existing fault) in web/src/api/client.ts:
-      138:18 and 145:14, @typescript-eslint/no-unsafe-declaration-merging
-      ("Unsafe declaration merging between classes and interfaces").
+      Passed at PR #56 head after the F3 repair commit (2026-09-18, branch
+      onyx/work-ci-repair-20260917): eslint reports zero problems. Pre-existing
+      fault F3 (2 no-unsafe-declaration-merging errors at web/src/api/client.ts
+      138:18 / 145:14 at base 203d550d) was fixed by deleting the dead ApiError
+      interface (behavior-preserving; covered by the new regression test
+      web/src/api/client.test.ts).
   web-test:
     command: npm --prefix web run test
     gate: true
@@ -148,9 +148,10 @@ commands:
     gate: true
     verified: not-run
     note: >
-      Aggregates fmt-check lint test build openapi-validate. It will report the
-      same pre-existing fmt-check failure; run the individual gates instead and
-      triage fmt-check before relying on the aggregate.
+      Aggregates fmt-check lint test build openapi-validate. All constituent
+      Go gates pass at the F3 repair head (2026-09-18: fmt-check, lint, test,
+      build, openapi-validate each exit 0); the aggregate itself was not run as
+      a single command.
   compose-up:
     command: make compose-up
     gate: integration
@@ -264,8 +265,8 @@ deployment:
 known_faults:
   - id: F1
     command: make fmt-check
-    severity: pre-existing
-    summary: "8 Go files not gofmt-clean."
+    severity: resolved
+    summary: "8 Go files not gofmt-clean (pre-existing at base 203d550d; RESOLVED by commit 2500b5b on 2026-09-17)."
     files:
       - internal/search/opensearch/indexer.go
       - internal/ingestion/openlibrary.go
@@ -275,11 +276,11 @@ known_faults:
       - internal/api/auth.go
       - internal/api/reconciliation.go
       - internal/api/helpers.go
-    action: "Run `make fmt` and commit; or fix per-file. This will fail the `ci` Go job until fixed."
+    action: "Resolved: `gofmt -w` applied in commit 2500b5b (PR #56). Gate re-verified exit 0 on 2026-09-18."
   - id: F2
     command: npm --prefix web run format
-    severity: pre-existing
-    summary: "6 WebUI files fail prettier --check."
+    severity: resolved
+    summary: "6 WebUI files fail prettier --check (pre-existing at base 203d550d; RESOLVED by commit 2500b5b on 2026-09-17)."
     files:
       - web/src/api/client.ts
       - web/src/app/pages/EditionComparePage.tsx
@@ -287,14 +288,14 @@ known_faults:
       - web/src/app/pages/SearchPage.tsx
       - web/src/app/pages/WorkDetailPage.tsx
       - web/src/styles/global.css
-    action: "Run `npm --prefix web run format:write` and commit; or fix per-file. Fails the `ci` WebUI job until fixed."
+    action: "Resolved: `prettier --write` applied in commit 2500b5b (PR #56). Gate re-verified exit 0 on 2026-09-18."
   - id: F3
     command: npm --prefix web run lint
-    severity: pre-existing
-    summary: "2 eslint errors in web/src/api/client.ts (no-unsafe-declaration-merging at 138:18 and 145:14)."
+    severity: resolved
+    summary: "2 eslint errors in web/src/api/client.ts (no-unsafe-declaration-merging at 138:18 and 145:14; pre-existing at base 203d550d; RESOLVED by the F3 repair commit on 2026-09-18)."
     files:
       - web/src/api/client.ts
-    action: "Resolve the unsafe class/interface declaration merging; fails the `ci` WebUI job until fixed."
+    action: "Resolved: deleted the dead ApiError interface (class-only identity; the cast `body as ApiError` targets the class). Behavior preserved, covered by the regression test web/src/api/client.test.ts. Gate re-verified exit 0 on 2026-09-18."
 
 skipped_integrations:
   - id: S1

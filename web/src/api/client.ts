@@ -135,13 +135,6 @@ export interface QualityReport {
   by_source: QualityCoverageBySource[];
 }
 
-export interface ApiError {
-  type: string;
-  title: string;
-  status: number;
-  detail: string;
-}
-
 export class ApiError extends Error {
   type: string;
   status: number;
