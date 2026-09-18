@@ -1,4 +1,3 @@
-
 /* --- S2: Search page --- */
 .search-form {
   display: flex;
@@ -186,4 +185,3 @@
     grid-template-columns: 1fr;
   }
 }
-

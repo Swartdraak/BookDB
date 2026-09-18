@@ -95,8 +95,8 @@ func selectBestValue(values []FieldValue) FieldValue {
 	// Sources disagree: prefer higher authority.
 	// Authority order: wikidata > openlibrary > other
 	authority := map[string]int{
-		"wikidata":     3,
-		"openlibrary":  2,
+		"wikidata":    3,
+		"openlibrary": 2,
 	}
 	best := values[0]
 	bestAuth := authority[best.SourceName]
@@ -198,8 +198,8 @@ func (r *Reconciler) Merge(ctx context.Context, entityType string, idA, idB uuid
 
 // SplitResult is the outcome of a split operation.
 type SplitResult struct {
-	NewID      uuid.UUID `json:"new_id"`
-	Revision   int64     `json:"revision"`
+	NewID    uuid.UUID `json:"new_id"`
+	Revision int64     `json:"revision"`
 }
 
 // Split separates a portion of an entity into a new entity.
@@ -417,4 +417,3 @@ func NormalizeTitle(title string) string {
 	}
 	return title
 }
-

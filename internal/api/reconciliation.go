@@ -118,10 +118,10 @@ func (s *ReconciliationServer) handleResolve(w http.ResponseWriter, r *http.Requ
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"entity_type":   entityType,
-		"requested_id":  entityIDStr,
-		"canonical_id":  canonicalID.String(),
-		"is_redirect":   canonicalID != entityID,
+		"entity_type":  entityType,
+		"requested_id": entityIDStr,
+		"canonical_id": canonicalID.String(),
+		"is_redirect":  canonicalID != entityID,
 	})
 }
 
@@ -177,4 +177,3 @@ func (s *ReconciliationServer) handleDuplicates(w http.ResponseWriter, r *http.R
 		"total":       len(candidates),
 	})
 }
-

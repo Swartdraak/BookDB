@@ -26,40 +26,40 @@ const SourceName = "openlibrary"
 
 // Snapshot identifies a specific Open Library dump subset.
 type Snapshot struct {
-	ID          string `json:"id"`
-	Hash        string `json:"hash"`
-	RecordCount int    `json:"record_count"`
+	ID          string    `json:"id"`
+	Hash        string    `json:"hash"`
+	RecordCount int       `json:"record_count"`
 	RetrievedAt time.Time `json:"retrieved_at"`
 }
 
 // Record is a single normalized bibliographic record from the source.
 type Record struct {
-	SourceKey   string `json:"source_key"`   // e.g. "OL1234567W"
-	SourceType  string `json:"source_type"`  // "work", "edition", "author"
-	Title       string `json:"title"`
+	SourceKey   string   `json:"source_key"`  // e.g. "OL1234567W"
+	SourceType  string   `json:"source_type"` // "work", "edition", "author"
+	Title       string   `json:"title"`
 	Authors     []string `json:"authors,omitempty"`
-	Language    string `json:"language,omitempty"`
+	Language    string   `json:"language,omitempty"`
 	ISBNs       []string `json:"isbns,omitempty"`
-	Publisher   string `json:"publisher,omitempty"`
-	PublishDate string `json:"publish_date,omitempty"`
-	Format      string `json:"format,omitempty"` // print, ebook, audio, etc.
-	RawJSON     []byte `json:"-"`                // original source record
+	Publisher   string   `json:"publisher,omitempty"`
+	PublishDate string   `json:"publish_date,omitempty"`
+	Format      string   `json:"format,omitempty"` // print, ebook, audio, etc.
+	RawJSON     []byte   `json:"-"`                // original source record
 }
 
 // JobState tracks the progress of an ingestion run.
 type JobState struct {
-	JobID         uuid.UUID `json:"job_id"`
-	SourceName    string    `json:"source_name"`
-	SnapshotID    string    `json:"snapshot_id"`
-	Status        string    `json:"status"`
-	TotalRecords  int64     `json:"total_records"`
-	Processed     int64     `json:"processed"`
-	Accepted      int64     `json:"accepted"`
-	Unchanged     int64     `json:"unchanged"`
-	Rejected      int64     `json:"rejected"`
-	Quarantined   int64     `json:"quarantined"`
-	Checkpoint    []byte    `json:"checkpoint,omitempty"`
-	ErrorMessage  string    `json:"error_message,omitempty"`
+	JobID        uuid.UUID `json:"job_id"`
+	SourceName   string    `json:"source_name"`
+	SnapshotID   string    `json:"snapshot_id"`
+	Status       string    `json:"status"`
+	TotalRecords int64     `json:"total_records"`
+	Processed    int64     `json:"processed"`
+	Accepted     int64     `json:"accepted"`
+	Unchanged    int64     `json:"unchanged"`
+	Rejected     int64     `json:"rejected"`
+	Quarantined  int64     `json:"quarantined"`
+	Checkpoint   []byte    `json:"checkpoint,omitempty"`
+	ErrorMessage string    `json:"error_message,omitempty"`
 }
 
 // Ingestor performs the Open Library ingestion pipeline.

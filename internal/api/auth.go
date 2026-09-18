@@ -325,4 +325,3 @@ func (s *AuthServer) handleDisableUser(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "user_disabled"})
 }
-
