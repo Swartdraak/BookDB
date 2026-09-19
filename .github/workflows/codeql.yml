@@ -1,0 +1,81 @@
+# BookDB code scanning (CodeQL)
+#
+# Closes the COVERAGE-GAP-CODE-SCANNING finding: GitHub code-scanning was
+# unconfigured (HTTP 404 "no analysis found"), so all security findings
+# SEC-1..SEC-5 from the 2026-09-19 assessment were found only by manual
+# inspection. This workflow uploads CodeQL analysis results so future
+# regressions are machine-detected by GitHub's native code-scanning surface.
+#
+# Scope: Go (server) + JavaScript/TypeScript (WebUI).
+# Trigger: pull_request + weekly schedule (catches main-branch drift).
+# Permissions: security-events: write (required for SARIF upload).
+
+name: CodeQL
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 5 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["go", "javascript-typescript"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - name: Setup Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build Go (for CodeQL)
+        if: matrix.language == 'go'
+        run: |
+          go build ./...
+          go vet ./...
+
+      - name: Setup Node
+        if: matrix.language == 'javascript-typescript'
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies (for CodeQL)
+        if: matrix.language == 'javascript-typescript'
+        run: npm --prefix web ci
+
+      - name: Autobuild (JavaScript/TypeScript)
+        if: matrix.language == 'javascript-typescript'
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
