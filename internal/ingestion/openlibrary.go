@@ -36,8 +36,8 @@ type Snapshot struct {
 
 // Record is a single normalized bibliographic record from the source.
 type Record struct {
-	SourceKey   string   `json:"source_key"`             // e.g. "OL1234567W"
-	SourceType  string   `json:"source_type"`            // "work", "edition", "author"
+	SourceKey   string   `json:"source_key"`  // e.g. "OL1234567W"
+	SourceType  string   `json:"source_type"` // "work", "edition", "author"
 	Title       string   `json:"title"`
 	Authors     []string `json:"authors,omitempty"`
 	Language    string   `json:"language,omitempty"`

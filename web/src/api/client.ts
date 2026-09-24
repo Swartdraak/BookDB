@@ -135,13 +135,6 @@ export interface QualityReport {
   by_source: QualityCoverageBySource[];
 }
 
-export interface ApiError {
-  type: string;
-  title: string;
-  status: number;
-  detail: string;
-}
-
 export class ApiError extends Error {
   type: string;
   status: number;
@@ -164,11 +157,17 @@ async function apiFetch<T>(path: string, apiKey?: string): Promise<T> {
 }
 
 export function searchWorks(query: string, limit = 20, apiKey?: string) {
-  return apiFetch<SearchResponse>(`/api/v1/search?q=${encodeURIComponent(query)}&limit=${limit}`, apiKey);
+  return apiFetch<SearchResponse>(
+    `/api/v1/search?q=${encodeURIComponent(query)}&limit=${limit}`,
+    apiKey,
+  );
 }
 
 export function searchEntity(entity: string, query: string, limit = 20, apiKey?: string) {
-  return apiFetch<EntitySearchResponse>(`/api/v1/search/${entity}?q=${encodeURIComponent(query)}&limit=${limit}`, apiKey);
+  return apiFetch<EntitySearchResponse>(
+    `/api/v1/search/${entity}?q=${encodeURIComponent(query)}&limit=${limit}`,
+    apiKey,
+  );
 }
 
 export function getProvenance(type: string, id: string, apiKey?: string) {
@@ -197,4 +196,3 @@ export function compareEditions(leftEditionId: string, rightEditionId: string, a
 export function getQualityCoverage(apiKey?: string) {
   return apiFetch<QualityReport>(`/api/v1/quality/coverage`, apiKey);
 }
-

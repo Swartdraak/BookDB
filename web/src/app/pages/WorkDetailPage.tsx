@@ -27,10 +27,7 @@ export function WorkDetailPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [w, p] = await Promise.allSettled([
-          getRichWork(id),
-          getProvenance('work', id),
-        ]);
+        const [w, p] = await Promise.allSettled([getRichWork(id), getProvenance('work', id)]);
         if (cancelled) return;
         if (w.status === 'fulfilled') {
           setWork(w.value.work);
@@ -47,7 +44,9 @@ export function WorkDetailPage() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   if (loading) {
@@ -66,7 +65,9 @@ export function WorkDetailPage() {
         <section className="surface-panel" role="alert">
           <h2>Work not found</h2>
           <p>{error ?? 'This work does not exist in the catalog.'}</p>
-          <Link to="/search" className="button-link">Back to search</Link>
+          <Link to="/search" className="button-link">
+            Back to search
+          </Link>
         </section>
       </div>
     );
@@ -81,9 +82,7 @@ export function WorkDetailPage() {
           <span aria-current="page">{work.canonical_title}</span>
         </nav>
         <h2>{work.canonical_title}</h2>
-        {work.language_code && (
-          <p className="work-meta">Language: {work.language_code}</p>
-        )}
+        {work.language_code && <p className="work-meta">Language: {work.language_code}</p>}
         <p className="work-meta">
           Work ID: <code>{work.work_id}</code>
         </p>
@@ -122,12 +121,18 @@ export function WorkDetailPage() {
             {editions.map((ed) => (
               <li key={ed.edition_id} className="edition-item">
                 <strong>{ed.edition_title}</strong>
-                {ed.publisher_name && <span className="edition-publisher"> — {ed.publisher_name}</span>}
-                {ed.publication_date && <span className="edition-date"> ({ed.publication_date.slice(0, 4)})</span>}
+                {ed.publisher_name && (
+                  <span className="edition-publisher"> — {ed.publisher_name}</span>
+                )}
+                {ed.publication_date && (
+                  <span className="edition-date"> ({ed.publication_date.slice(0, 4)})</span>
+                )}
                 {ed.format && <span className="edition-format"> [{ed.format}]</span>}
                 {ed.isbn13 && <span className="edition-isbn"> ISBN: {ed.isbn13}</span>}
                 {ed.accessibility.length > 0 && (
-                  <span className="edition-format">Accessibility: {ed.accessibility.join(', ')}</span>
+                  <span className="edition-format">
+                    Accessibility: {ed.accessibility.join(', ')}
+                  </span>
                 )}
               </li>
             ))}
@@ -142,7 +147,9 @@ export function WorkDetailPage() {
             {audio.map((perf) => (
               <li key={perf.performance_id} className="edition-item">
                 <strong>{perf.narrator_name ?? perf.narrator_id ?? 'Unknown narrator'}</strong>
-                {perf.producer_name && <span className="edition-publisher"> — {perf.producer_name}</span>}
+                {perf.producer_name && (
+                  <span className="edition-publisher"> — {perf.producer_name}</span>
+                )}
                 {perf.is_abridged && <span className="edition-format">[abridged]</span>}
               </li>
             ))}
@@ -185,4 +192,3 @@ export function WorkDetailPage() {
     </div>
   );
 }
-

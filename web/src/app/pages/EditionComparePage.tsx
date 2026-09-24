@@ -42,7 +42,9 @@ export function EditionComparePage() {
           <span aria-current="page">Edition comparison</span>
         </nav>
         <h2>Edition comparison</h2>
-        <p className="work-meta">Compare two editions side by side to inspect publication differences.</p>
+        <p className="work-meta">
+          Compare two editions side by side to inspect publication differences.
+        </p>
       </section>
 
       {!left || !right ? (
@@ -70,23 +72,28 @@ export function EditionComparePage() {
             <p className="work-meta">Format: {comparison.left.format ?? 'unknown'}</p>
             <p className="work-meta">ISBN: {comparison.left.isbn13 ?? 'unknown'}</p>
             <p className="work-meta">Publisher: {comparison.left.publisher_name ?? 'unknown'}</p>
-            <p className="work-meta">Accessibility: {comparison.left.accessibility.join(', ') || 'none'}</p>
+            <p className="work-meta">
+              Accessibility: {comparison.left.accessibility.join(', ') || 'none'}
+            </p>
           </article>
           <article className="compare-card">
             <h3>{comparison.right.edition_title}</h3>
             <p className="work-meta">Format: {comparison.right.format ?? 'unknown'}</p>
             <p className="work-meta">ISBN: {comparison.right.isbn13 ?? 'unknown'}</p>
             <p className="work-meta">Publisher: {comparison.right.publisher_name ?? 'unknown'}</p>
-            <p className="work-meta">Accessibility: {comparison.right.accessibility.join(', ') || 'none'}</p>
+            <p className="work-meta">
+              Accessibility: {comparison.right.accessibility.join(', ') || 'none'}
+            </p>
           </article>
           <article className="surface-panel compare-summary" aria-live="polite">
             <h3>Summary</h3>
             <p className="work-meta">Same work: {comparison.same_work ? 'yes' : 'no'}</p>
-            <p className="work-meta">Different fields: {allDifferences.length > 0 ? allDifferences.join(', ') : 'none'}</p>
+            <p className="work-meta">
+              Different fields: {allDifferences.length > 0 ? allDifferences.join(', ') : 'none'}
+            </p>
           </article>
         </section>
       ) : null}
     </div>
   );
 }
-
