@@ -15,6 +15,7 @@ import (
 
 	"github.com/bookdb/bookdb/internal/database"
 	"github.com/bookdb/bookdb/internal/ingestion"
+	"github.com/bookdb/bookdb/internal/promotion"
 	"github.com/google/uuid"
 )
 
@@ -26,6 +27,7 @@ func runIngest(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	snapshotID := fs.String("snapshot-id", "", "Snapshot identifier")
 	timeout := fs.Duration("timeout", 0, "Optional ingest timeout (for example 30m or 2h); 0 disables timeout")
 	countLines := fs.Bool("count-lines", false, "Count records before ingest (expensive on large .gz dumps)")
+	promoteNow := fs.Bool("promote", true, "Promote accepted source records to canonical entities as they are stored (S2 pipeline: parse -> persist evidence -> resolve/reconcile/publish). Disable with --promote=false for legacy evidence-only ingest.")
 	_ = fs.Parse(args)
 
 	if *file == "" || *snapshotID == "" {
@@ -98,6 +100,7 @@ func runIngest(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	}
 
 	ing := ingestion.NewIngestor(db)
+	promo := promotion.NewPromoter(db)
 	job, err := ing.StartJob(ctx, snapshot)
 	if err != nil {
 		fmt.Fprintf(stderr, "bookdb ingest: start job: %v\n", err)
@@ -122,12 +125,23 @@ func runIngest(ctx context.Context, args []string, stdout, stderr io.Writer) int
 
 	records, errs := ingestion.ReadSnapshot(input)
 	processed := int64(0)
+	promoted := 0
 	for rec := range records {
-		_, err := ing.ProcessRecord(ctx, job.JobID, *rec)
+		result, err := ing.ProcessRecord(ctx, job.JobID, *rec)
 		if err != nil {
 			failJobBestEffort(ing, job.JobID, err.Error())
 			fmt.Fprintf(stderr, "bookdb ingest: process record: %v\n", err)
 			return 1
+		}
+		// S2 pipeline step 3-5: promote accepted source records to canonical
+		// entities (works/editions/people) with provenance, revisions, change
+		// feed and canonical outbox events for the search projection.
+		if *promoteNow && result == "accepted" {
+			if _, err := promo.PromoteRecord(ctx, rec); err != nil {
+				fmt.Fprintf(stderr, "bookdb ingest: promote %s/%s: %v\n", rec.SourceType, rec.SourceKey, err)
+			} else {
+				promoted++
+			}
 		}
 		processed++
 		if processed%1000 == 0 {
@@ -160,6 +174,9 @@ func runIngest(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fmt.Fprintf(stdout, "Unchanged:   %d\n", finalJob.Unchanged)
 	fmt.Fprintf(stdout, "Rejected:    %d\n", finalJob.Rejected)
 	fmt.Fprintf(stdout, "Quarantined: %d\n", finalJob.Quarantined)
+	if *promoteNow {
+		fmt.Fprintf(stdout, "Promoted:    %d\n", promoted)
+	}
 	fmt.Fprintln(stderr, "bookdb ingest: complete")
 	return 0
 }
