@@ -9,12 +9,14 @@
 package ingestion
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -273,12 +275,21 @@ func validateRecord(rec Record) error {
 }
 
 // ParseOpenLibraryLine parses a single line from an Open Library dump file.
-// The format is JSON lines (one JSON object per line).
+// Supports both plain JSON lines (JSONL subsets) and the tab-separated format
+// used by Open Library complete dumps (.txt.gz), where each row is:
+//
+//	/type/<kind> TAB /key TAB revision TAB timestamp TAB {JSON}
 func ParseOpenLibraryLine(line string) (*Record, error) {
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return nil, nil
 	}
+
+	line = extractJSONPayload(line)
+	if line == "" {
+		return nil, nil
+	}
+
 	var raw map[string]any
 	if err := json.Unmarshal([]byte(line), &raw); err != nil {
 		return nil, fmt.Errorf("parse line: %w", err)
@@ -286,14 +297,17 @@ func ParseOpenLibraryLine(line string) (*Record, error) {
 
 	rec := &Record{RawJSON: []byte(line)}
 
-	// Determine source type and key.
+	// Determine source type and key — first pass strips known prefixes.
 	if key, ok := raw["key"].(string); ok {
 		rec.SourceKey = strings.TrimPrefix(key, "/works/")
 		rec.SourceKey = strings.TrimPrefix(rec.SourceKey, "/editions/")
+		rec.SourceKey = strings.TrimPrefix(rec.SourceKey, "/books/")
 		rec.SourceKey = strings.TrimPrefix(rec.SourceKey, "/authors/")
 	}
 
 	// Determine type from the key prefix.
+	// OL complete dumps use two edition key formats: /editions/OL...M (canonical)
+	// and the legacy /books/OL...M format. Both map to source_type = "edition".
 	if key, ok := raw["key"].(string); ok {
 		switch {
 		case strings.HasPrefix(key, "/works/"):
@@ -302,6 +316,9 @@ func ParseOpenLibraryLine(line string) (*Record, error) {
 		case strings.HasPrefix(key, "/editions/"):
 			rec.SourceType = "edition"
 			rec.SourceKey = strings.TrimPrefix(key, "/editions/")
+		case strings.HasPrefix(key, "/books/"):
+			rec.SourceType = "edition"
+			rec.SourceKey = strings.TrimPrefix(key, "/books/")
 		case strings.HasPrefix(key, "/authors/"):
 			rec.SourceType = "author"
 			rec.SourceKey = strings.TrimPrefix(key, "/authors/")
@@ -310,9 +327,28 @@ func ParseOpenLibraryLine(line string) (*Record, error) {
 		}
 	}
 
-	// Extract title.
+	// Extract title. For author records, OL uses "name" not "title".
 	if title, ok := raw["title"].(string); ok {
 		rec.Title = title
+	} else if rec.SourceType == "author" {
+		if name, ok := raw["name"].(string); ok {
+			rec.Title = name
+		}
+	}
+
+	// Extract author references from works: authors[].author.key
+	if rec.SourceType == "work" {
+		if authRefs, ok := raw["authors"].([]any); ok {
+			for _, ar := range authRefs {
+				if m, ok := ar.(map[string]any); ok {
+					if authObj, ok := m["author"].(map[string]any); ok {
+						if k, ok := authObj["key"].(string); ok {
+							rec.Authors = append(rec.Authors, strings.TrimPrefix(k, "/authors/"))
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// Extract language.
@@ -366,47 +402,60 @@ func ParseOpenLibraryLine(line string) (*Record, error) {
 	return rec, nil
 }
 
-// ReadSnapshot reads records from an io.Reader (JSON lines format).
+func extractJSONPayload(line string) string {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return ""
+	}
+	// Open Library complete dumps are tab-separated rows where column 5
+	// (0-indexed: col 4) contains the JSON record payload:
+	//   /type/<kind> TAB /key TAB revision TAB timestamp TAB {JSON}
+	if strings.HasPrefix(line, "/type/") {
+		parts := strings.SplitN(line, "\t", 5)
+		if len(parts) == 5 {
+			return strings.TrimSpace(parts[4])
+		}
+	}
+	return line
+}
+
+// ReadSnapshot reads records from an io.Reader supporting both JSONL and
+// Open Library complete dump tab-separated format. It streams line by line
+// without loading the full file into memory.
 func ReadSnapshot(r io.Reader) (<-chan *Record, <-chan error) {
 	records := make(chan *Record, 100)
 	errs := make(chan error, 1)
 
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				errs <- fmt.Errorf("snapshot reader panic: %v\n%s", rec, string(debug.Stack()))
+			}
+		}()
 		defer close(records)
 		defer close(errs)
 
-		buf := make([]byte, 64*1024)
-		var line strings.Builder
-
+		br := bufio.NewReaderSize(r, 1<<20)
 		for {
-			n, err := r.Read(buf)
-			if n > 0 {
-				line.WriteString(string(buf[:n]))
-				for {
-					idx := strings.IndexByte(line.String(), '\n')
-					if idx < 0 {
-						break
-					}
-					l := line.String()[:idx]
-					line.Reset()
-					line.WriteString(line.String()[idx+1:])
-
-					rec, parseErr := ParseOpenLibraryLine(l)
-					if parseErr != nil {
-						errs <- parseErr
-						return
-					}
-					if rec != nil {
-						records <- rec
-					}
+			line, err := br.ReadString('\n')
+			if len(line) > 0 {
+				rec, parseErr := ParseOpenLibraryLine(line)
+				if parseErr != nil {
+					errs <- parseErr
+					return
+				}
+				if rec != nil {
+					records <- rec
 				}
 			}
-			if err != nil {
-				if err != io.EOF {
-					errs <- err
-				}
+			if err == nil {
+				continue
+			}
+			if err == io.EOF {
 				return
 			}
+			errs <- err
+			return
 		}
 	}()
 

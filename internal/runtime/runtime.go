@@ -310,6 +310,7 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 		searchFn := newSearchFn(context.Background(), cfg, dbPool)
 		searchAPI := api.NewSearchServer(dbPool, searchFn)
 		mux.Handle("/api/v1/search", searchAPI.Handler())
+		mux.Handle("/api/v1/search/", searchAPI.Handler())
 		mux.HandleFunc("GET /api/v1/provenance/{type}/{id}", api.ProvenanceHandler(dbPool))
 
 		// S3 reconciliation endpoints.
@@ -320,6 +321,7 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 		authAPI := api.NewAuthServer(dbPool)
 		mux.Handle("/api/v1/auth/", authAPI.Handler())
 		mux.Handle("/api/v1/proposals", authAPI.Handler())
+		mux.Handle("/api/v1/proposals/", authAPI.Handler())
 		mux.Handle("/api/v1/users/", authAPI.Handler())
 	}
 
@@ -377,10 +379,6 @@ func newDependencyRegistry(cfg *config.Config, db *sql.DB) *health.Registry {
 	return registry
 }
 
-// openDatabasePool opens a PostgreSQL pool for readiness checks. It returns
-// nil when the DSN is empty or the pool cannot be created; readiness then
-// falls back to a TCP probe so a misconfigured environment still reports
-// down rather than panicking.
 func openDatabasePool(ctx context.Context, cfg *config.Config) *sql.DB {
 	dsn := cfg.Database.DSN
 	if strings.TrimSpace(dsn) == "" {
@@ -393,9 +391,6 @@ func openDatabasePool(ctx context.Context, cfg *config.Config) *sql.DB {
 	return db
 }
 
-// checkDatabase reports readiness based on a real query. When a live pool is
-// available it runs SELECT 1; otherwise it falls back to a TCP probe so the
-// endpoint still distinguishes reachable-but-unqueryable from unreachable.
 func checkDatabase(ctx context.Context, db *sql.DB, dsn string) health.Status {
 	if db != nil {
 		if err := db.PingContext(ctx); err != nil {
@@ -503,10 +498,6 @@ func authModePayload(cfg *config.Config) map[string]any {
 	}
 }
 
-// apiMacKey derives the server-side key used to HMAC API key secrets. It is
-// sourced from BOOKDB_API_KEY_MAC (hex or raw) and falls back to a
-// development-only constant. Production deployments must set a strong,
-// secret value; the fallback is for local development only.
 func apiMacKey(cfg *config.Config) []byte {
 	if v := os.Getenv("BOOKDB_API_KEY_MAC"); v != "" {
 		if decoded, err := hex.DecodeString(v); err == nil && len(decoded) >= 32 {
@@ -518,9 +509,6 @@ func apiMacKey(cfg *config.Config) []byte {
 	return []byte("bookdb-dev-api-key-mac-key-0000000000")
 }
 
-// newRateLimiter creates a shared Valkey-backed rate limiter for the API.
-// It returns nil when Valkey is not configured or unreachable, which disables
-// rate limiting (the API still works, just without the shared quota).
 func newRateLimiter(ctx context.Context, cfg *config.Config) *ratelimit.Limiter {
 	if strings.TrimSpace(cfg.Valkey.URL) == "" {
 		return nil
@@ -534,7 +522,6 @@ func newRateLimiter(ctx context.Context, cfg *config.Config) *ratelimit.Limiter 
 	return ratelimit.New(client, cfg.Valkey.KeyPrefix, limit, window)
 }
 
-// runKey handles the `bookdb key create` subcommand.
 func runKey(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] != "create" {
 		fmt.Fprintln(stderr, "Usage: bookdb key create --name <name> --scope <scope>")
@@ -581,12 +568,10 @@ func runKey(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "Name:       %s\n", issued.Name)
 	fmt.Fprintf(stdout, "Scopes:     %s\n", strings.Join(issued.Scopes, ", "))
 	fmt.Fprintf(stdout, "Secret:     %s\n", issued.Secret)
-	fmt.Fprintf(stdout, "\nSave this secret now — it will not be shown again.\n")
+	fmt.Fprintf(stdout, "\nSave this secret now \u2014 it will not be shown again.\n")
 	return 0
 }
 
-// runFixtures loads the S1 synthetic fixture catalog into the database, or
-// verifies it read-only with --verify.
 func runFixtures(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("fixtures", flag.ExitOnError)
 	verify := fs.Bool("verify", false, "Read-only verification of the fixture graph (no writes)")
@@ -638,8 +623,6 @@ func runFixtures(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// newSearchFn creates the search function that queries OpenSearch.
-// Returns nil when OpenSearch is not configured or unreachable.
 func newSearchFn(ctx context.Context, cfg *config.Config, db *sql.DB) func(entity, query string, limit int) ([]map[string]any, error) {
 	if strings.TrimSpace(cfg.OpenSearch.URL) == "" {
 		return nil

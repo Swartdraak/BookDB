@@ -26,11 +26,11 @@ func (s *AuthServer) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/login", s.handleLogin)
 	mux.HandleFunc("POST /api/v1/auth/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/v1/auth/me", s.handleMe)
-	mux.HandleFunc("POST /api/v1/proposals", s.handleSubmitProposal)
-	mux.HandleFunc("GET /api/v1/proposals", s.handleListProposals)
-	mux.HandleFunc("POST /api/v1/proposals/{id}/review", s.handleReviewProposal)
-	mux.HandleFunc("PUT /api/v1/users/{id}/role", s.handleSetRole)
-	mux.HandleFunc("POST /api/v1/users/{id}/disable", s.handleDisableUser)
+	mux.HandleFunc("POST /api/v1/proposals", s.authService.AuthMiddleware(auth.RoleContributor, s.handleSubmitProposal))
+	mux.HandleFunc("GET /api/v1/proposals", s.authService.AuthMiddleware(auth.RoleReader, s.handleListProposals))
+	mux.HandleFunc("POST /api/v1/proposals/{id}/review", s.authService.AuthMiddleware(auth.RoleAdministrator, s.handleReviewProposal))
+	mux.HandleFunc("PUT /api/v1/users/{id}/role", s.authService.AuthMiddleware(auth.RoleAdministrator, s.handleSetRole))
+	mux.HandleFunc("POST /api/v1/users/{id}/disable", s.authService.AuthMiddleware(auth.RoleAdministrator, s.handleDisableUser))
 	return mux
 }
 
