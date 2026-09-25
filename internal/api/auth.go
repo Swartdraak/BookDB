@@ -85,6 +85,7 @@ func (s *AuthServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Value:    session.SessionID.String(),
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 		Expires:  session.ExpiresAt,
 		MaxAge:   int(time.Until(session.ExpiresAt).Seconds()),
@@ -110,12 +111,16 @@ func (s *AuthServer) handleLogout(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Clear cookie.
+	// Clear cookie. Attributes must match the login cookie (Path=/, HttpOnly,
+	// Secure, SameSite=Strict) so browsers actually delete it.
 	http.SetCookie(w, &http.Cookie{
-		Name:   "bookdb_session",
-		Value:  "",
-		Path:   "/",
-		MaxAge: -1,
+		Name:     "bookdb_session",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 	})
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "logged_out"})
