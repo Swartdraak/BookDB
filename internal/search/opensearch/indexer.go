@@ -201,7 +201,6 @@ func (ix *Indexer) ProcessOutbox(ctx context.Context, batchSize int) (int, error
 			continue
 		}
 		doc["entity_id"] = aggID
-		doc["source_key"] = doc["source_key"]
 
 		if err := ix.IndexDocument(ctx, aggType, aggID, doc); err != nil {
 			// Don't fail the batch on a single document error.
@@ -210,6 +209,7 @@ func (ix *Indexer) ProcessOutbox(ctx context.Context, batchSize int) (int, error
 		}
 
 		ix.markPublished(ctx, id)
+		ix.recordProjectionState(ctx, aggType, aggID)
 		processed++
 	}
 	return processed, rows.Err()
@@ -218,4 +218,26 @@ func (ix *Indexer) ProcessOutbox(ctx context.Context, batchSize int) (int, error
 func (ix *Indexer) markPublished(ctx context.Context, id int64) {
 	_, _ = ix.db.ExecContext(ctx, `
 		UPDATE bookdb.outbox SET published_at = now() WHERE id = $1`, id)
+}
+
+// recordProjectionState records the entity's current canonical revision in
+// bookdb.search_projection_state so operators can see which entities are
+// indexed (and at which revision) for incremental updates.
+func (ix *Indexer) recordProjectionState(ctx context.Context, entityType string, entityID string) {
+	var revision int64
+	err := ix.db.QueryRowContext(ctx, `
+		SELECT revision FROM bookdb.canonical_revisions
+		WHERE entity_type = $1 AND entity_id = $2`,
+		entityType, entityID).Scan(&revision)
+	if err != nil {
+		// Source events without a canonical revision (e.g. pre-promotion
+		// record.accepted events) are still tracked, at revision 1.
+		revision = 1
+	}
+	_, _ = ix.db.ExecContext(ctx, `
+		INSERT INTO bookdb.search_projection_state (entity_type, entity_id, revision, indexed_at)
+		VALUES ($1, $2, $3, now())
+		ON CONFLICT (entity_type, entity_id)
+		DO UPDATE SET revision = EXCLUDED.revision, indexed_at = now()`,
+		entityType, entityID, revision)
 }

@@ -177,6 +177,9 @@ func runWorker(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		fmt.Fprintf(stderr, "bookdb worker: unknown kind %q\n", args[0])
 		return 2
 	}
+	if args[0] == "index" {
+		return runWorkerIndex(ctx, args[1:], stdout, stderr)
+	}
 	return runService(ctx, "worker "+args[0], stdout, stderr)
 }
 
