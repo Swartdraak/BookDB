@@ -176,19 +176,52 @@ export function WorkDetailPage() {
       {provenance.length > 0 && (
         <section className="surface-panel">
           <h3>Source Provenance</h3>
+          <p className="work-meta">
+            Follow an entity back to the source record it was built from. Expand a record to see its
+            raw source payload.
+          </p>
           <ul className="provenance-list" aria-label="Source provenance">
             {provenance.map((p, i) => (
-              <li key={i} className="provenance-item">
-                <span className="provenance-source">{p.source_name}</span>
-                <code className="provenance-key">{p.source_key}</code>
-                <time className="provenance-date" dateTime={p.created_at}>
-                  {new Date(p.created_at).toLocaleDateString()}
-                </time>
-              </li>
+              <ProvenanceItem key={`${p.source_key}-${i}`} record={p} />
             ))}
           </ul>
         </section>
       )}
     </div>
+  );
+}
+
+function ProvenanceItem({ record: p }: { record: ProvenanceRecord }) {
+  const [open, setOpen] = useState(false);
+  const rawText = JSON.stringify(p.raw, null, 2);
+  return (
+    <li className="provenance-item provenance-item--block">
+      <div className="provenance-row">
+        <span className="provenance-source">{p.source_name}</span>
+        <code className="provenance-key">{p.source_key}</code>
+        {p.content_hash && <code className="provenance-hash">{p.content_hash.slice(0, 12)}…</code>}
+        <time className="provenance-date" dateTime={p.created_at}>
+          {new Date(p.created_at).toLocaleDateString()}
+        </time>
+        <button
+          type="button"
+          className="provenance-toggle"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? 'Hide source record' : 'Show source record'}
+        </button>
+      </div>
+      {open && (
+        <pre
+          className="provenance-raw"
+          tabIndex={0}
+          role="region"
+          aria-label={`Raw source record for ${p.source_key}`}
+        >
+          {rawText}
+        </pre>
+      )}
+    </li>
   );
 }

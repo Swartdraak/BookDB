@@ -140,6 +140,219 @@
   border: 0;
 }
 
+/* --- S2: Search status / loading / empty (#23) --- */
+.search-status {
+  min-height: 1.25rem;
+  margin: 0.6rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.search-loading {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.search-empty {
+  border-style: dashed;
+}
+
+/* --- S2: Session / local-admin access (#23) --- */
+.masthead-actions {
+  display: flex;
+  align-items: center;
+}
+
+.masthead-session {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.masthead-session.is-checking {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.session-role {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-strong);
+}
+
+.session-name {
+  font-weight: 600;
+}
+
+.session-logout {
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.session-logout:hover,
+.session-logout:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
+.session-lede {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.session-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.session-tab {
+  flex: 1;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.session-tab.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.session-field {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.session-field input {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  min-height: 2.4rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-strong);
+  font-size: 0.95rem;
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+.session-field input:focus-visible {
+  outline: 3px solid rgba(15, 118, 110, 0.32);
+  outline-offset: 1px;
+}
+
+.session-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.session-error {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-sm);
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.session-submit {
+  width: 100%;
+  min-height: 2.6rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.session-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.session-submit:focus-visible {
+  outline: 3px solid rgba(15, 118, 110, 0.32);
+  outline-offset: 2px;
+}
+
+/* --- S2: Provenance expandable source record (#23) --- */
+.provenance-item--block {
+  display: block;
+}
+
+.provenance-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.provenance-hash {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.provenance-toggle {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--accent-strong);
+}
+
+.provenance-toggle:hover,
+.provenance-toggle:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.provenance-raw {
+  margin: 0.6rem 0 0;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* --- S5: Quality dashboard and comparison --- */
 .quality-table {
   width: 100%;

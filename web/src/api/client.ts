@@ -135,6 +135,24 @@ export interface QualityReport {
   by_source: QualityCoverageBySource[];
 }
 
+/** A BookDB account as returned by /api/v1/auth/register and /api/v1/auth/me. */
+export interface AuthUser {
+  user_id: string;
+  username: string;
+  email: string;
+  display_name: string;
+  role: string;
+  status: string;
+}
+
+/** A live session as returned by /api/v1/auth/login. */
+export interface AuthSession {
+  session_id: string;
+  user_id: string;
+  csrf_token: string;
+  expires_at: string;
+}
+
 export class ApiError extends Error {
   type: string;
   status: number;
@@ -145,10 +163,18 @@ export class ApiError extends Error {
   }
 }
 
-async function apiFetch<T>(path: string, apiKey?: string): Promise<T> {
+async function apiFetch<T>(path: string, apiKey?: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (apiKey) headers['X-API-Key'] = apiKey;
-  const resp = await fetch(`${API_BASE}${path}`, { headers });
+  // Send/accept the bookdb_session cookie for session-scoped calls so the
+  // browser carries the S4 session automatically (credentials: 'include' is
+  // required for the fetch to include cookies on a cross-origin API base).
+  const options: RequestInit = {
+    credentials: 'include',
+    ...init,
+    headers: { ...headers, ...init?.headers },
+  };
+  const resp = await fetch(`${API_BASE}${path}`, options);
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({ detail: resp.statusText }));
     throw new ApiError(body as ApiError);
@@ -195,4 +221,54 @@ export function compareEditions(leftEditionId: string, rightEditionId: string, a
 
 export function getQualityCoverage(apiKey?: string) {
   return apiFetch<QualityReport>(`/api/v1/quality/coverage`, apiKey);
+}
+
+export interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+  display_name: string;
+}
+
+/**
+ * Register a local account (POST /api/v1/auth/register). Returns the created
+ * user; the caller follows with login to obtain a session cookie.
+ */
+export function registerUser(req: RegisterRequest) {
+  return apiFetch<AuthUser>(`/api/v1/auth/register`, undefined, {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+}
+
+/**
+ * Log in (POST /api/v1/auth/login). The server sets the bookdb_session cookie
+ * (credentials: 'include' makes the browser accept it). Returns user + session.
+ */
+export function loginUser(username: string, password: string) {
+  return apiFetch<{ user: AuthUser; session: AuthSession }>(`/api/v1/auth/login`, undefined, {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+/** Log out (POST /api/v1/auth/logout); the server clears the session cookie. */
+export function logoutUser() {
+  return apiFetch<{ status: string }>(`/api/v1/auth/logout`, undefined, { method: 'POST' });
+}
+
+/**
+ * Current session identity (GET /api/v1/auth/me). Returns the user, or
+ * `null` when no valid session cookie is present (401 missing_session), so
+ * callers can render a signed-out shell without treating it as an error.
+ */
+export async function fetchMe(): Promise<AuthUser | null> {
+  try {
+    return await apiFetch<AuthUser>(`/api/v1/auth/me`);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.type === 'missing_session')) {
+      return null;
+    }
+    throw err;
+  }
 }
