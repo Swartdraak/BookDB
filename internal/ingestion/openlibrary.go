@@ -67,11 +67,52 @@ type JobState struct {
 // Ingestor performs the Open Library ingestion pipeline.
 type Ingestor struct {
 	db *sql.DB
+
+	// accounted tracks source keys already counted in the current job run.
+	// It is checkpoint-aware: a record replayed by a resumed run was already
+	// counted (and checkpointed) before the interruption, so it must not
+	// re-increment processed or the outcome counters, or the accounting
+	// invariant accepted+unchanged+rejected+quarantined == processed breaks
+	// (issue #62). The set is seeded from source_records at StartJob — the
+	// same table the idempotency check consults — and populated as records
+	// are counted within the run.
+	accounted map[string]struct{}
 }
 
 // NewIngestor creates an Ingestor backed by the given database.
 func NewIngestor(db *sql.DB) *Ingestor {
-	return &Ingestor{db: db}
+	return &Ingestor{
+		db:        db,
+		accounted: make(map[string]struct{}),
+	}
+}
+
+// seedAccounted loads the source keys already present in source_records for
+// this source into the per-run accounted set. Resuming a job re-reads the
+// same rows the idempotency check reads, so replayed records are recognized
+// as already accounted and skipped by the counters. A load failure leaves
+// the set empty, which degrades to the original (pre-#62) behavior.
+func (i *Ingestor) seedAccounted(ctx context.Context) {
+	i.accounted = make(map[string]struct{})
+	rows, err := i.db.QueryContext(ctx,
+		`SELECT source_key FROM bookdb.source_records WHERE source_name = $1`,
+		SourceName)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			continue
+		}
+		i.accounted[key] = struct{}{}
+	}
+}
+
+// markAccounted records that a source key was counted in the current run.
+func (i *Ingestor) markAccounted(sourceKey string) {
+	i.accounted[sourceKey] = struct{}{}
 }
 
 // StartJob creates a new ingestion job and returns its state.
@@ -97,6 +138,10 @@ func (i *Ingestor) StartJob(ctx context.Context, snapshot Snapshot) (*JobState, 
 		return nil, fmt.Errorf("ingestion: record manifest: %w", err)
 	}
 
+	// Seed the per-run accounted set with rows already present in
+	// source_records so a resumed run recognizes replayed records (issue #62).
+	i.seedAccounted(ctx)
+
 	return &JobState{
 		JobID:        jobID,
 		SourceName:   SourceName,
@@ -119,10 +164,20 @@ func (i *Ingestor) ProcessRecord(ctx context.Context, jobID uuid.UUID, rec Recor
 		SourceName, rec.SourceKey).Scan(&existingHash)
 	if err == nil {
 		if existingHash == contentHash {
-			i.incrementCounter(ctx, jobID, "unchanged")
+			// Record already stored with identical content. If it was
+			// accounted in this run (seeded on resume, or seen earlier in
+			// this pass), the counters already include it — re-incrementing
+			// would double-count it against processed (issue #62).
+			if _, ok := i.accounted[rec.SourceKey]; !ok {
+				i.markAccounted(rec.SourceKey)
+				i.incrementCounter(ctx, jobID, "unchanged")
+			}
 			return "unchanged", nil
 		}
-		// Content changed: update the record.
+		// Content changed: the stored row was already counted once (either
+		// this run or an earlier completed job), so the update path must not
+		// add another 'accepted' increment on top of it.
+		i.markAccounted(rec.SourceKey)
 	} else if err != sql.ErrNoRows {
 		return "", fmt.Errorf("ingestion: check existing: %w", err)
 	}
@@ -168,7 +223,14 @@ func (i *Ingestor) ProcessRecord(ctx context.Context, jobID uuid.UUID, rec Recor
 		return "", fmt.Errorf("ingestion: publish outbox: %w", err)
 	}
 
-	i.incrementCounter(ctx, jobID, "accepted")
+	// Count the record only if it was not already accounted this run. The
+	// changed-content path (above) marks the key before falling through here,
+	// so a replayed update does not add a second 'accepted' increment (issue
+	// #62). A genuinely new record has no mark and is counted once.
+	if _, ok := i.accounted[rec.SourceKey]; !ok {
+		i.markAccounted(rec.SourceKey)
+		i.incrementCounter(ctx, jobID, "accepted")
+	}
 	return "accepted", nil
 }
 
