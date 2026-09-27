@@ -97,7 +97,8 @@ func newOSStub(t *testing.T) *osStub {
 			stub.mu.Unlock()
 			writeJSONStub(w, 200, map[string]any{"result": "created"})
 			return
-		case len(parts) == 2 && parts[1] == "_aliases" && r.Method == http.MethodPost:
+		case len(parts) == 1 && parts[0] == "_aliases" && r.Method == http.MethodPost,
+			len(parts) == 2 && parts[1] == "_aliases" && r.Method == http.MethodPost:
 			stub.mu.Lock()
 			if len(rawBody) > 0 {
 				var body struct {
@@ -240,7 +241,7 @@ func TestProcessOutboxIndexesEvents(t *testing.T) {
 	db := openSearchTestDB(t)
 	ctx := context.Background()
 	stub := newOSStub(t)
-	client, err := New(stub.URL, 5*time.Second)
+	client, err := New(stub.Server.URL, 5*time.Second)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -330,12 +331,12 @@ func TestProcessOutboxIndexesEvents(t *testing.T) {
 	// The stub received both doc writes under the alias; same doc ID (entity
 	// id) means re-indexing replaces, never duplicates.
 	stub.mu.Lock()
-	workIndex := stub.aliases["bookdb_works"]
+	workIndex := stub.aliases["bookdb_work"]
 	docs := len(stub.docs[workIndex])
-	puts := stub.docPuts["bookdb_works/"+workID]
+	puts := stub.docPuts["bookdb_work/"+workID]
 	stub.mu.Unlock()
 	if workIndex == "" {
-		t.Fatal("alias bookdb_works was not registered on the stub")
+		t.Fatal("alias bookdb_work was not registered on the stub")
 	}
 	if docs != 1 {
 		t.Fatalf("expected exactly 1 doc in the work index, got %d", docs)
@@ -367,7 +368,7 @@ func TestProcessOutboxIndexesEvents(t *testing.T) {
 	}
 	stub.mu.Lock()
 	docsAfter := len(stub.docs[workIndex])
-	putsAfter := stub.docPuts["bookdb_works/"+workID]
+	putsAfter := stub.docPuts["bookdb_work/"+workID]
 	stub.mu.Unlock()
 	if docsAfter != 1 || putsAfter != 2 {
 		t.Fatalf("re-run changed the projection: docs=%d puts=%d (want 1/2)", docsAfter, putsAfter)
@@ -384,7 +385,7 @@ func TestProcessOutboxMarksUnparseablePayloadsPublished(t *testing.T) {
 	db := openSearchTestDB(t)
 	ctx := context.Background()
 	stub := newOSStub(t)
-	client, err := New(stub.URL, 5*time.Second)
+	client, err := New(stub.Server.URL, 5*time.Second)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -425,7 +426,7 @@ func TestProcessOutboxMarksUnparseablePayloadsPublished(t *testing.T) {
 		t.Fatalf("unparseable row must be marked published to avoid stalling the batch; %d still unpublished", unpublished)
 	}
 	stub.mu.Lock()
-	workIndex := stub.aliases["bookdb_works"]
+	workIndex := stub.aliases["bookdb_work"]
 	docs := len(stub.docs[workIndex])
 	stub.mu.Unlock()
 	if docs != 1 {
