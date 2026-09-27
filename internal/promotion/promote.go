@@ -104,16 +104,22 @@ func (p *Promoter) Promote(ctx context.Context, rec *Record) (*Outcome, error) {
 
 	entityType := entityTypeFor(rec)
 
-	// Idempotency: skip when the stored content hash matches this record.
-	// The canonical entity this record promoted to is stored in the source
-	// record payload (source_record.entity_id), so replay returns a stable
-	// mapping even before the idempotency gate runs.
+	// Idempotency: skip when the stored content hash matches this record
+	// AND the source record already carries a promoted entity mapping.
+	// The mapping (source_record.entity_id) is written by linkSourceRecord
+	// when this record last promoted, so a genuine replay returns a stable
+	// mapping without side effects. A freshly ingested record can have a
+	// matching content hash WITHOUT a mapping (ingestion stores the record
+	// before it is ever promoted) — that is first-pass promotion, not a
+	// replay, and must fall through to the resolve/create path below;
+	// treating it as a no-op would silently drop every record on the
+	// initial ingest→promote pass (issue #21).
 	storedHash, entityID, err := p.sourceRecordState(ctx, SourceName, rec.SourceKey)
 	if err != nil {
 		return nil, err
 	}
 	recHash := hashRecord(rec)
-	if storedHash != "" && storedHash == recHash {
+	if storedHash != "" && storedHash == recHash && entityID != "" {
 		rev, _ := p.revision(ctx, entityType, entityID)
 		return &Outcome{
 			EntityType:   entityType,
