@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -54,7 +55,11 @@ func (s *AuthServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.authService.Register(r.Context(), req.Username, req.Email, req.Password, req.DisplayName)
 	if err != nil {
-		writeError(w, http.StatusConflict, "registration_failed", err.Error())
+		// ErrWeakPassword (validation) and duplicate username/email
+		// (uniqueness) both map to 409. The error detail is not echoed:
+		// registration failures must not reveal whether a username already
+		// exists.
+		writeError(w, http.StatusConflict, "registration_failed", "Registration failed.")
 		return
 	}
 
@@ -262,7 +267,19 @@ func (s *AuthServer) handleReviewProposal(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := s.authService.ReviewProposal(r.Context(), proposalID, user.UserID, req.Approve, req.Note); err != nil {
-		writeError(w, http.StatusConflict, "review_failed", err.Error())
+		// BDB-011 error classes: an unknown proposal ID is 404 (an unknown
+		// resource is not confirmed as existing), a stale revision /
+		// already-reviewed proposal is 409 (no partial publication — the
+		// review transaction rolls back in both cases).
+		if errors.Is(err, auth.ErrProposalNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "Proposal not found.")
+			return
+		}
+		if errors.Is(err, auth.ErrProposalConflict) {
+			writeError(w, http.StatusConflict, "proposal_conflict", "Proposal is no longer pending.")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "review_failed", "Review failed.")
 		return
 	}
 
