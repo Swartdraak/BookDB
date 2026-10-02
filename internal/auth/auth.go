@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -41,9 +42,47 @@ type User struct {
 type Session struct {
 	SessionID uuid.UUID `json:"session_id"`
 	UserID    uuid.UUID `json:"user_id"`
+	Role      Role      `json:"-"` // role the session was issued with (privilege-change rotation)
 	CSRFToken string    `json:"csrf_token"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
+
+// ErrInvalidCredentials reports that login failed for any reason (unknown
+// user, wrong password, or a non-active account). All three cases are
+// deliberately indistinguishable to the caller: the API layer maps this to
+// a single 401 so a disabled account cannot be probed through login.
+var ErrInvalidCredentials = errors.New("auth: invalid credentials")
+
+// ErrOIDCIdentityTaken reports that the (issuer, subject) pair is already
+// bound to a different user (BDB-010): OIDC subject strings are only unique
+// per issuer, and one user cannot adopt an identity another user already
+// holds. The API layer maps this to 409.
+var ErrOIDCIdentityTaken = errors.New("auth: oidc identity already linked to another user")
+
+// ErrOIDCIdentityLinked reports that the user already has this exact
+// (issuer, subject) pair linked; re-linking is a no-op conflict. The API
+// layer maps this to 409.
+var ErrOIDCIdentityLinked = errors.New("auth: oidc identity already linked to this user")
+
+// ErrStaleRole reports that a session was issued with a role that no longer
+// matches the account (BDB-007/009): the privilege change is real but the
+// session predates it, so it must be rotated with a fresh login instead of
+// silently carrying the new privileges. The API layer maps this to 401.
+var ErrStaleRole = errors.New("auth: session role is stale")
+
+// ErrWeakPassword reports that a registration password is below the
+// minimum length (BDB-007). The API layer maps this to 409.
+var ErrWeakPassword = errors.New("auth: password must be at least 8 characters")
+
+// ErrProposalNotFound reports that a review targeted a proposal that does
+// not exist. The API layer maps this to 404 (unknown resources are not
+// revealed as 409, so a stale reviewer cannot probe for proposal IDs).
+var ErrProposalNotFound = errors.New("auth: proposal not found")
+
+// ErrProposalConflict reports that a review targeted a proposal whose
+// status is no longer pending (already approved/rejected/withdrawn) or
+// whose revision no longer matches. The API layer maps this to 409.
+var ErrProposalConflict = errors.New("auth: proposal conflict")
 
 // AuthService handles authentication and session management.
 type AuthService struct {
@@ -59,7 +98,7 @@ func NewAuthService(db *sql.DB) *AuthService {
 // Register creates a new user account.
 func (a *AuthService) Register(ctx context.Context, username, email, password, displayName string) (*User, error) {
 	if len(password) < 8 {
-		return nil, fmt.Errorf("auth: password must be at least 8 characters")
+		return nil, ErrWeakPassword
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -91,16 +130,16 @@ func (a *AuthService) Login(ctx context.Context, username, password string) (*Us
 		FROM bookdb.users WHERE username = $1`, username).
 		Scan(&userID, &passwordHash, &u.Username, &u.Email, &u.DisplayName, &u.Role, &u.Status)
 	if err == sql.ErrNoRows {
-		return nil, nil, fmt.Errorf("auth: invalid credentials")
+		return nil, nil, ErrInvalidCredentials
 	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("auth: login: %w", err)
 	}
 	if u.Status != "active" {
-		return nil, nil, fmt.Errorf("auth: account is %s", u.Status)
+		return nil, nil, ErrInvalidCredentials
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
-		return nil, nil, fmt.Errorf("auth: invalid credentials")
+		return nil, nil, ErrInvalidCredentials
 	}
 	u.UserID = userID
 
@@ -117,6 +156,15 @@ func (a *AuthService) Login(ctx context.Context, username, password string) (*Us
 		return nil, nil, fmt.Errorf("auth: create session: %w", err)
 	}
 
+	// Record the role the session was issued with (BDB-007/009: a privilege
+	// change made outside the session must not silently extend the
+	// session's privileges).
+	if _, err := a.db.ExecContext(ctx,
+		`UPDATE bookdb.sessions SET issued_role = $2 WHERE session_id = $1`,
+		sessionID, string(u.Role)); err != nil {
+		return nil, nil, fmt.Errorf("auth: record session role: %w", err)
+	}
+
 	// Update last login.
 	_, _ = a.db.ExecContext(ctx, `
 		UPDATE bookdb.users SET last_login_at = now() WHERE user_id = $1`, userID)
@@ -124,6 +172,7 @@ func (a *AuthService) Login(ctx context.Context, username, password string) (*Us
 	session := &Session{
 		SessionID: sessionID,
 		UserID:    userID,
+		Role:      u.Role,
 		CSRFToken: csrfToken,
 		ExpiresAt: expiresAt,
 	}
@@ -145,12 +194,14 @@ func (a *AuthService) ValidateSession(ctx context.Context, sessionID uuid.UUID) 
 	)
 	err := a.db.QueryRowContext(ctx, `
 		SELECT s.session_id, s.user_id, s.csrf_token, s.expires_at,
-		       u.username, u.email, u.display_name, u.role, u.status
+		       u.username, u.email, u.display_name, u.role, u.status,
+		       s.issued_role
 		FROM bookdb.sessions s
 		JOIN bookdb.users u ON u.user_id = s.user_id
 		WHERE s.session_id = $1 AND s.revoked_at IS NULL`, sessionID).
 		Scan(&s.SessionID, &s.UserID, &s.CSRFToken, &s.ExpiresAt,
-			&u.Username, &u.Email, &u.DisplayName, &u.Role, &u.Status)
+			&u.Username, &u.Email, &u.DisplayName, &u.Role, &u.Status,
+			&s.Role)
 	if err == sql.ErrNoRows {
 		return nil, nil, fmt.Errorf("auth: invalid session")
 	}
@@ -159,6 +210,16 @@ func (a *AuthService) ValidateSession(ctx context.Context, sessionID uuid.UUID) 
 	}
 	if time.Now().After(s.ExpiresAt) {
 		return nil, nil, fmt.Errorf("auth: session expired")
+	}
+	// A role change made outside the session must not silently extend the
+	// session's privileges (BDB-007/009): a stale-issued session is
+	// rejected so the user rotates with a fresh login. Sessions predating
+	// the column (NULL issued_role) fall back to the account's current
+	// role, preserving existing behavior.
+	if s.Role == "" {
+		s.Role = u.Role
+	} else if s.Role != u.Role {
+		return nil, nil, ErrStaleRole
 	}
 	u.UserID = s.UserID
 	return &u, &s, nil
@@ -226,7 +287,21 @@ func (a *AuthService) ReviewProposal(ctx context.Context, proposalID uuid.UUID, 
 	}
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return fmt.Errorf("auth: proposal not found or already reviewed")
+		// Distinguish "proposal does not exist" (404 class) from "proposal
+		// already reviewed" (409 class) — BDB-011 requires a stale reviewer
+		// to get a conflict, while an unknown ID must not be confirmed as
+		// existing. No row was written in either case, so the transaction is
+		// rolled back by the deferred Rollback (no partial publication).
+		var exists int
+		if err := tx.QueryRowContext(ctx,
+			`SELECT count(*) FROM bookdb.correction_proposals WHERE proposal_id = $1`, proposalID).
+			Scan(&exists); err != nil {
+			return fmt.Errorf("auth: review proposal existence: %w", err)
+		}
+		if exists == 0 {
+			return ErrProposalNotFound
+		}
+		return ErrProposalConflict
 	}
 
 	// Audit the action.
@@ -313,6 +388,51 @@ func (a *AuthService) DisableUser(ctx context.Context, userID uuid.UUID, adminID
 	_, _ = a.db.ExecContext(ctx, `
 		INSERT INTO bookdb.audit_events (user_id, action, entity_type, entity_id)
 		VALUES ($1, 'user.disabled', 'user', $2)`, adminID, userID)
+	return nil
+}
+
+// LinkOIDCSubject binds an OIDC (issuer, subject) identity to an
+// authenticated user (BDB-010). The identity is the PAIR: the same subject
+// at a different issuer is a distinct identity and may be linked by another
+// user. An identity already bound to a different user cannot be adopted;
+// re-linking the same pair to the same user is a conflict.
+func (a *AuthService) LinkOIDCSubject(ctx context.Context, userID uuid.UUID, issuer, subject string) error {
+	if issuer == "" || subject == "" {
+		return fmt.Errorf("auth: oidc issuer and subject are required")
+	}
+	var owner uuid.UUID
+	err := a.db.QueryRowContext(ctx, `
+		SELECT user_id FROM bookdb.users
+		WHERE oidc_issuer = $1 AND oidc_subject = $2`, issuer, subject).
+		Scan(&owner)
+	switch {
+	case err == sql.ErrNoRows:
+		// Unclaimed identity: bind it to this user.
+	case err != nil:
+		return fmt.Errorf("auth: lookup oidc identity: %w", err)
+	case owner == userID:
+		return ErrOIDCIdentityLinked
+	default:
+		return ErrOIDCIdentityTaken
+	}
+	res, err := a.db.ExecContext(ctx, `
+		UPDATE bookdb.users
+		SET oidc_issuer = $2, oidc_subject = $3, updated_at = now()
+		WHERE user_id = $1 AND oidc_subject IS NULL`,
+		userID, issuer, subject)
+	if err != nil {
+		return fmt.Errorf("auth: link oidc subject: %w", err)
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		// The user already carries some other (issuer, subject) binding:
+		// a local account holds at most one external identity.
+		return ErrOIDCIdentityLinked
+	}
+	_, _ = a.db.ExecContext(ctx, `
+		INSERT INTO bookdb.audit_events (user_id, action, entity_type, entity_id, detail)
+		VALUES ($1, 'user.oidc_linked', 'user', $2, $3)`,
+		userID, userID, mustJSON(map[string]string{"issuer": issuer}))
 	return nil
 }
 
