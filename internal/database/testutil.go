@@ -2,12 +2,21 @@ package database
 
 import (
 	"context"
-	"fmt"
 )
 
-// PrepareCleanTestDatabase resets the migration bookkeeping and recreates the
-// requested application schema so integration tests can start from a clean
-// PostgreSQL database without assuming the canonical schema already exists.
+// PrepareCleanTestDatabase resets the migration bookkeeping and recreates
+// the requested application schema so integration tests can start from a
+// clean PostgreSQL database without assuming the canonical schema already
+// exists.
+//
+// NOTE: this signature takes the narrow DB interface so in-package unit
+// tests can exercise the reset logic against a fake. It does NOT take the
+// cross-package advisory lock (the interface cannot hand out a dedicated
+// stdlib connection for the lock session). Live integration tests share a
+// single disposable database across packages, so they MUST use
+// PrepareCleanStdlibTestDatabase or PrepareCleanAndMigrate, which wrap
+// the same reset in the TestResetLockKey advisory lock and serialize
+// concurrent package mutations (issue #68).
 func PrepareCleanTestDatabase(ctx context.Context, db DB, schema string) error {
 	if schema == "" {
 		schema = DefaultApplicationSchema
@@ -16,29 +25,5 @@ func PrepareCleanTestDatabase(ctx context.Context, db DB, schema string) error {
 	if err != nil {
 		return err
 	}
-
-	if err := ensureTrackingTable(ctx, db, DefaultTrackingTable); err != nil {
-		return err
-	}
-
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("database: begin test reset: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	if _, err := tx.ExecContext(ctx, `DELETE FROM public.bookdb_migrations`); err != nil {
-		return fmt.Errorf("database: clear migration state: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`DROP SCHEMA IF EXISTS %s CASCADE`, quotedSchema)); err != nil {
-		return fmt.Errorf("database: drop test schema: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %s`, quotedSchema)); err != nil {
-		return fmt.Errorf("database: create test schema: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("database: commit test reset: %w", err)
-	}
-	return nil
+	return runTestReset(ctx, db, quotedSchema)
 }

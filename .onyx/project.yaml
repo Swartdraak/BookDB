@@ -78,11 +78,22 @@ commands:
     command: make test
     gate: true
     verified: passed
-    requires: "TMPDIR and GOCACHE on an executable filesystem (container /tmp is noexec)."
+    requires: >
+      TMPDIR and GOCACHE on an executable filesystem (container /tmp is noexec).
+      For live-PostgreSQL integration tests: a reachable disposable PostgreSQL
+      18 instance with BOOKDB_TEST_DATABASE_URL set (e.g.
+      postgres://bookdb@127.0.0.1:5432/bookdb?sslmode=disable).
     evidence: >
-      14 packages with tests all `ok`; 6 packages have no test files.
+      `make test` runs `go test -count=1 -p 1` (serial package execution,
+      no cached results) for deterministic results against a shared
+      disposable PostgreSQL database. Serial execution is required because
+      test packages share a single database and each resets the schema;
+      parallel package execution causes schema-reset races (issue #68).
+      16 packages with tests all `ok`; 5 packages have no test files.
       Fails with `fork/exec .../X.test: permission denied` if TMPDIR/GOCACHE
-      remain on the noexec /tmp mount — an environment constraint, not a code fault.
+      remain on the noexec /tmp mount — an environment constraint, not a code
+      fault. Advisory-locked reset helpers (internal/database/testutil_lock.go)
+      serialize cross-package schema mutations via pg_advisory_lock(734212991).
   build:
     command: make build
     gate: true

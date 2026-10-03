@@ -15,19 +15,17 @@ import (
 
 // cleanTestSchema resets the shared disposable test database to a clean
 // bookdb-schema state (drops + recreates schema and migration state) and
-// re-applies migrations. Other packages share this database, so each test
-// file's first test resets it per docs/bookdb/08-testing.md.
-//
-// database.PrepareCleanTestDatabase is typed against the package's narrow
-// database.DB interface; the stdlib *sql.DB satisfies the same surface, so
-// we wrap it in a thin adapter instead of changing the production signature.
+// re-applies migrations. Other packages share this database; the reset is
+// serialized across packages by the database package's TestResetLockKey
+// advisory lock (issue #68), so concurrent `go test` package execution
+// cannot interleave a reset with another package's queries.
 func cleanTestSchema(t *testing.T, db *sql.DB) {
 	t.Helper()
-	if err := database.PrepareCleanTestDatabase(context.Background(), &sqlDBAdapter{db}, "bookdb"); err != nil {
+	// Clean schema + migrations in ONE advisory-locked critical section
+	// (issue #68): the reset and the migration DDL cannot interleave with
+	// another package's queries.
+	if _, err := database.PrepareCleanAndMigrate(context.Background(), db, "bookdb"); err != nil {
 		t.Fatalf("prepare clean test database: %v", err)
-	}
-	if _, err := database.RunUp(context.Background(), db); err != nil {
-		t.Fatalf("re-apply migrations after reset: %v", err)
 	}
 	var count int
 	if err := db.QueryRowContext(context.Background(),
