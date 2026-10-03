@@ -320,8 +320,9 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 		mux.Handle("/api/v1/search/", searchAPI.Handler())
 		mux.HandleFunc("GET /api/v1/provenance/{type}/{id}", api.ProvenanceHandler(dbPool))
 
-		// S3 reconciliation endpoints.
-		reconAPI := api.NewReconciliationServer(dbPool)
+		// S3 reconciliation endpoints (issue #60: API-key auth +
+		// administrator role for mutations).
+		reconAPI := api.NewReconciliationServer(dbPool, apiMacKey(cfg))
 		mux.Handle("/api/v1/reconciliation/", reconAPI.Handler())
 
 		// S4 auth and moderation endpoints.
