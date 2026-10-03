@@ -13,11 +13,15 @@ import (
 // ReconciliationServer provides S3 reconciliation API endpoints.
 type ReconciliationServer struct {
 	reconciler *reconciliation.Reconciler
+	client     *reconciliation.EnrichmentClient
 }
 
 // NewReconciliationServer creates a ReconciliationServer.
 func NewReconciliationServer(db *sql.DB) *ReconciliationServer {
-	return &ReconciliationServer{reconciler: reconciliation.NewReconciler(db)}
+	return &ReconciliationServer{
+		reconciler: reconciliation.NewReconciler(db),
+		client:     reconciliation.NewEnrichmentClient(reconciliation.EnrichmentConfig{}),
+	}
 }
 
 // Handler returns the HTTP handler for the /api/v1/reconciliation namespace.
@@ -28,6 +32,8 @@ func (s *ReconciliationServer) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/reconciliation/resolve/{type}/{id}", s.handleResolve)
 	mux.HandleFunc("GET /api/v1/reconciliation/changes", s.handleChanges)
 	mux.HandleFunc("GET /api/v1/reconciliation/duplicates/{type}", s.handleDuplicates)
+	mux.HandleFunc("POST /api/v1/reconciliation/duplicates/generate", s.handleDuplicatesGenerate)
+	mux.HandleFunc("POST /api/v1/reconciliation/reconcile", s.handleReconcile)
 	return mux
 }
 
@@ -176,4 +182,46 @@ func (s *ReconciliationServer) handleDuplicates(w http.ResponseWriter, r *http.R
 		"candidates":  candidates,
 		"total":       len(candidates),
 	})
+}
+
+// handleDuplicatesGenerate runs cross-source duplicate candidate generation
+// (S3, issue #55) and returns the persisted pending candidates.
+func (s *ReconciliationServer) handleDuplicatesGenerate(w http.ResponseWriter, r *http.Request) {
+	candidates, err := s.reconciler.FindDuplicateCandidatesCrossSource(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal", "Candidate generation failed.")
+		return
+	}
+	if candidates == nil {
+		candidates = []reconciliation.DuplicateCandidate{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"candidates": candidates,
+		"total":      len(candidates),
+		"note":       "candidates are pending; same-name matches are never auto-merged",
+	})
+}
+
+type reconcileRequest struct {
+	Source     string `json:"source"`
+	MaxPerType int    `json:"max_per_type"`
+}
+
+// handleReconcile runs the S3 enrichment + candidate post-pass (issue #55)
+// for a source: OL API enrichment with field-level provenance selection
+// plus cross-source duplicate candidate generation.
+func (s *ReconciliationServer) handleReconcile(w http.ResponseWriter, r *http.Request) {
+	var req reconcileRequest
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+	if req.Source == "" {
+		req.Source = "openlibrary"
+	}
+	out, err := s.reconciler.RunReconcile(r.Context(), s.client, req.Source, req.MaxPerType)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal", "Reconciliation pass failed.")
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }

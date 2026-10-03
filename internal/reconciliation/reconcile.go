@@ -388,9 +388,15 @@ func (r *Reconciler) FindDuplicateCandidates(ctx context.Context, entityType str
 
 // DuplicateCandidate is a potential duplicate pair.
 type DuplicateCandidate struct {
-	KeyA       string  `json:"key_a"`
-	KeyB       string  `json:"key_b"`
-	Confidence float64 `json:"confidence"`
+	CandidateID string  `json:"candidate_id,omitempty"`
+	TypeA       string  `json:"type_a,omitempty"`
+	IDA         string  `json:"id_a,omitempty"`
+	TypeB       string  `json:"type_b,omitempty"`
+	IDB         string  `json:"id_b,omitempty"`
+	KeyA        string  `json:"key_a,omitempty"`
+	KeyB        string  `json:"key_b,omitempty"`
+	Confidence  float64 `json:"confidence"`
+	Status      string  `json:"status,omitempty"`
 }
 
 // RecordWikidataClaim stores a Wikidata claim for an entity.
