@@ -326,6 +326,10 @@ func newRuntimeServer(name string, cfg *config.Config, logger *slog.Logger) (*ht
 		mux.Handle("/api/v1/proposals", authAPI.Handler())
 		mux.Handle("/api/v1/proposals/", authAPI.Handler())
 		mux.Handle("/api/v1/users/", authAPI.Handler())
+
+		// S4-ADMIN ingestion job administration endpoints (issue #30).
+		jobAdminAPI := api.NewJobAdminServer(dbPool)
+		mux.Handle("/api/v1/ingestion/", jobAdminAPI.Handler())
 	}
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
