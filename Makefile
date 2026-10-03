@@ -54,7 +54,7 @@ lint:
 	$(GO) vet $(GO_PACKAGES)
 
 test:
-	$(GO) test $(GO_PACKAGES)
+	$(GO) test -count=1 -p 1 $(GO_PACKAGES)
 
 build:
 	$(GO) build $(GO_PACKAGES)

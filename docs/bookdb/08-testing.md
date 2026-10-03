@@ -71,6 +71,41 @@ Human result: NOT RUN (reserved for the human)
 
 The agent stops before advancing past the gate. A maintainer comment with the exact candidate and pass/fail result is the authoritative acceptance record; a label or AI-generated screenshot is not human approval. At S8, GA promotion must use the accepted artifacts, not rebuild an untested moving `main`.
 
+## Deterministic test gate (issue #68)
+
+`make test` runs `go test -count=1 -p 1` (serial package execution, no
+cached results) to produce deterministic results against a shared
+disposable PostgreSQL database. Serial execution is required because
+test packages share a single database and each resets the application
+schema before its tests; parallel package execution causes schema-reset
+races (one package's `DROP SCHEMA ... CASCADE` interleaving with
+another package's mid-flight queries → `pq: relation "bookdb.<table>"
+does not exist (42P01)`).
+
+Cross-package schema mutations are further serialized by advisory-locked
+reset helpers (`internal/database/testutil_lock.go`,
+`pg_advisory_lock(734212991)`), which make each reset + re-migrate
+atomic on the shared database. The advisory lock prevents concurrent
+resets from interleaving (hazard 2: `42704` schema concurrently
+dropped during migration), while `-p 1` prevents concurrent packages
+from running mid-query while another package resets (hazard 1: `42P01`
+relation does not exist).
+
+Environment requirements for live-PostgreSQL integration tests:
+- A reachable disposable PostgreSQL 18 instance (e.g. Percona on
+  `127.0.0.1:5432`, trust auth, database `bookdb`).
+- `BOOKDB_TEST_DATABASE_URL` set to the DSN (e.g.
+  `postgres://bookdb@127.0.0.1:5432/bookdb?sslmode=disable`).
+- `TMPDIR` and `GOCACHE` on an executable filesystem (container `/tmp`
+  is noexec; use `/workspace`).
+
+Without `BOOKDB_TEST_DATABASE_URL`, the DB-dependent tests skip
+(`openTestDB` checks the DSN and skips when absent), so the suite is
+green in GitHub CI (which does not run a PostgreSQL service). The
+deterministic gate must be validated in any environment where the tests
+actually run against a live database (local `make ci`, acceptance
+pilots, validation harnesses).
+
 ## Verification economy
 
 Run the smallest relevant checks while editing; run the required PR gates on the final candidate. Repeat broader suites only after relevant changes or a failed gate. Avoid repeated full repository scans, all-source downloads or GPU stress tests on every task. Do not write tests for prose word counts, arbitrary role counts, or the existence of governance paperwork.

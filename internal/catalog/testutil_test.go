@@ -15,13 +15,15 @@ func testDSN(t *testing.T) string {
 	t.Helper()
 	dsn := os.Getenv("BOOKDB_TEST_DATABASE_URL")
 	if dsn == "" {
-		dsn = "postgres://bookdb:bookdb@127.0.0.1:5432/bookdb?sslmode=disable"
+		dsn = "postgres://bookdb:***@127.0.0.1:5432/bookdb?sslmode=disable"
 	}
 	return dsn
 }
 
-// openTestDB opens a PostgreSQL connection, applies all migrations, and loads
-// the S1 fixtures. It skips the test when the database is unreachable.
+// openTestDB opens a PostgreSQL connection, resets the shared bookdb schema
+// (advisory-locked, so a concurrent `go test` package cannot query mid-reset
+// — issue #68), applies all migrations in the same critical section, and
+// loads the S1 fixtures. It skips the test when the database is unreachable.
 func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	ctx := context.Background()
@@ -33,8 +35,8 @@ func openTestDB(t *testing.T) *sql.DB {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	if _, err := database.RunUp(ctx, db); err != nil {
-		t.Fatalf("apply migrations: %v", err)
+	if _, err := database.PrepareCleanAndMigrate(ctx, db, "bookdb"); err != nil {
+		t.Fatalf("prepare clean test schema: %v", err)
 	}
 	if err := LoadFixtures(ctx, db); err != nil {
 		t.Fatalf("load fixtures: %v", err)

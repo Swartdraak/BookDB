@@ -19,15 +19,18 @@ func openTestDB(t *testing.T) *sql.DB {
 	ctx := context.Background()
 	dsn := os.Getenv("BOOKDB_TEST_DATABASE_URL")
 	if dsn == "" {
-		dsn = "postgres://bookdb:bookdb@127.0.0.1:5432/bookdb?sslmode=disable"
+		dsn = "postgres://bookdb:***@127.0.0.1:5432/bookdb?sslmode=disable"
 	}
 	db, err := database.Open(ctx, dsn, 10, 2, 0)
 	if err != nil {
 		t.Skipf("PostgreSQL not reachable at %s: %v", dsn, err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if _, err := database.RunUp(ctx, db); err != nil {
-		t.Fatalf("apply migrations: %v", err)
+	// Clean schema + migrations in ONE advisory-locked critical section so
+	// this package's reset and migration DDL cannot interleave with a
+	// concurrent `go test` package (issue #68).
+	if _, err := database.PrepareCleanAndMigrate(ctx, db, "bookdb"); err != nil {
+		t.Fatalf("prepare clean test schema: %v", err)
 	}
 	if err := catalog.LoadFixtures(ctx, db); err != nil {
 		t.Fatalf("load fixtures: %v", err)

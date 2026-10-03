@@ -32,31 +32,11 @@ func openReplayTestDB(t *testing.T) *sql.DB {
 		t.Skipf("PostgreSQL not reachable at %s: %v", dsn, err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if _, err := database.RunUp(ctx, db); err != nil {
-		t.Fatalf("apply migrations: %v", err)
-	}
-	// Reset the bookdb schema (fresh-DB semantics per test case).
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		t.Fatalf("begin reset: %v", err)
-	}
-	if _, err := tx.ExecContext(ctx, `DROP SCHEMA IF EXISTS bookdb CASCADE`); err != nil {
-		_ = tx.Rollback()
-		t.Fatalf("drop test schema: %v", err)
-	}
-	if _, err := tx.ExecContext(ctx, `CREATE SCHEMA bookdb`); err != nil {
-		_ = tx.Rollback()
-		t.Fatalf("create test schema: %v", err)
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM public.bookdb_migrations`); err != nil {
-		_ = tx.Rollback()
-		t.Fatalf("clear migration state: %v", err)
-	}
-	if err := tx.Commit(); err != nil {
-		t.Fatalf("commit reset: %v", err)
-	}
-	if _, err := database.RunUp(ctx, db); err != nil {
-		t.Fatalf("re-apply migrations on clean schema: %v", err)
+	// Clean schema + migrations in ONE advisory-locked critical section so
+	// this package's reset and migration DDL cannot interleave with a
+	// concurrent `go test` package (issue #68).
+	if _, err := database.PrepareCleanAndMigrate(ctx, db, "bookdb"); err != nil {
+		t.Fatalf("prepare clean test schema: %v", err)
 	}
 	return db
 }
