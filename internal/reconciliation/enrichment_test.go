@@ -216,12 +216,12 @@ func TestNormalizeTitleStable(t *testing.T) {
 
 func TestLooksLikeAuthorKey(t *testing.T) {
 	cases := map[string]bool{
-		"OL17720A":  true,
-		"OL18315W":  false,
-		"OL123M":    false,
-		"OL":        false,
-		"OL12A":     true,
-		"OL1234XA":  false,
+		"OL17720A": true,
+		"OL18315W": false,
+		"OL123M":   false,
+		"OL":       false,
+		"OL12A":    true,
+		"OL1234XA": false,
 	}
 	for in, want := range cases {
 		if got := looksLikeAuthorKey(in); got != want {
