@@ -238,12 +238,11 @@ func TestReviewProposal_WorkPublication(t *testing.T) {
 	admin := newS4User(t, db, fmt.Sprintf("wk_admin_%d", time.Now().UnixNano()), string(RoleAdministrator), password)
 	contrib := newS4User(t, db, fmt.Sprintf("wk_contrib_%d", time.Now().UnixNano()), string(RoleContributor), password)
 
-	workID := uuid.MustParse("11111111-1111-4111-8111-111111111111")
-
-	// Insert the target work so the atomic publication has a valid entity
-	// (the auth package's openSharedTestDB does not load catalog fixtures).
+	// A fresh work (inserted + cleaned up by this test) so the publication
+	// target is self-contained and never stomps on another package's fixture.
+	workID := uuid.New()
 	if _, err := db.ExecContext(ctx,
-		`INSERT INTO bookdb.works (work_id, canonical_title, normalized_title) VALUES ($1, 'Original Work Title', 'original work title') ON CONFLICT DO NOTHING`,
+		`INSERT INTO bookdb.works (work_id, canonical_title, normalized_title) VALUES ($1, 'Original Work Title', 'original work title')`,
 		workID); err != nil {
 		t.Fatalf("insert test work: %v", err)
 	}
