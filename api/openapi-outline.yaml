@@ -121,6 +121,33 @@ components:
         title: {type: string}
         status: {type: integer}
         detail: {type: string}
+    Job:
+      type: object
+      required: [job_id, source_name, snapshot_id, status]
+      properties:
+        job_id: {type: string, format: uuid}
+        source_name: {type: string}
+        snapshot_id: {type: string}
+        status:
+          type: string
+          enum: [pending, running, paused, completed, failed, quarantined]
+        total_records: {type: integer, format: int64}
+        processed: {type: integer, format: int64}
+        accepted: {type: integer, format: int64}
+        unchanged: {type: integer, format: int64}
+        rejected: {type: integer, format: int64}
+        quarantined: {type: integer, format: int64}
+        error_message: {type: string}
+        started_at: {type: string, format: date-time, nullable: true}
+        finished_at: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    JobActionRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: Required for the quarantine action; optional (ignored) otherwise.
   responses:
     Unauthorized:
       description: Missing, invalid, revoked, or expired API key
@@ -150,7 +177,103 @@ components:
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
+    Conflict:
+      description: The job state transition is not valid from the current state (stale admin view or concurrent transition)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    BadRequest:
+      description: Malformed job ID, unknown action, or quarantine without a reason
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
 paths:
+  /ingestion/jobs:
+    get:
+      summary: List ingestion jobs (administrator)
+      description: >
+        S4-ADMIN (BDB-011). Requires an authenticated administrator session;
+        reader and contributor sessions receive 403. Optional query filters:
+        source (source_name) and status.
+      operationId: listIngestionJobs
+      parameters:
+        - in: query
+          name: source
+          required: false
+          schema: {type: string}
+        - in: query
+          name: status
+          required: false
+          schema: {type: string}
+        - in: query
+          name: limit
+          required: false
+          schema: {type: integer, default: 50, maximum: 200}
+      responses:
+        "200":
+          description: Jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items: {$ref: '#/components/schemas/Job'}
+                  total: {type: integer}
+        "401": {$ref: '#/components/responses/Unauthorized'}
+        "403": {$ref: '#/components/responses/Forbidden'}
+  /ingestion/jobs/{id}:
+    get:
+      summary: Get an ingestion job (administrator)
+      operationId: getIngestionJob
+      parameters:
+        - $ref: '#/components/parameters/WorkID'
+      responses:
+        "200":
+          description: Job
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Job'}
+        "400": {$ref: '#/components/responses/BadRequest'}
+        "401": {$ref: '#/components/responses/Unauthorized'}
+        "403": {$ref: '#/components/responses/Forbidden'}
+        "404": {$ref: '#/components/responses/NotFound'}
+  /ingestion/jobs/{id}/{action}:
+    post:
+      summary: Transition an ingestion job (administrator)
+      description: >
+        S4-ADMIN (BDB-011). action is one of: pause (running -> paused),
+        resume (paused -> running), retry (failed -> running), quarantine
+        (running|paused|failed -> quarantined; a non-empty reason is
+        required and is persisted on the job). A transition that is not
+        valid from the job's current state returns 409 with no partial
+        state change.
+      operationId: transitionIngestionJob
+      parameters:
+        - $ref: '#/components/parameters/WorkID'
+        - in: path
+          name: action
+          required: true
+          schema:
+            type: string
+            enum: [pause, resume, retry, quarantine]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/JobActionRequest'}
+      responses:
+        "200":
+          description: Updated job
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Job'}
+        "400": {$ref: '#/components/responses/BadRequest'}
+        "401": {$ref: '#/components/responses/Unauthorized'}
+        "403": {$ref: '#/components/responses/Forbidden'}
+        "404": {$ref: '#/components/responses/NotFound'}
+        "409": {$ref: '#/components/responses/Conflict'}
   /works/{id}:
     get:
       summary: Get canonical work
