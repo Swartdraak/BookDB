@@ -38,7 +38,12 @@ func cleanTestSchema(t *testing.T, db *sql.DB) {
 }
 
 // openSharedTestDB connects to the shared disposable test database and
-// applies migrations (idempotent; guarded by an advisory lock in RunUp).
+// guarantees a fully-migrated bookdb schema. It performs a clean reset +
+// migration in ONE advisory-locked critical section
+// (database.PrepareCleanAndMigrate, TestResetLockKey), matching the api
+// package's openTestDB, so the schema state NEVER depends on what another
+// package left behind in the -p 1 sequence (or on a subset run where no
+// other package ran first).
 func openSharedTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	ctx := context.Background()
@@ -51,8 +56,8 @@ func openSharedTestDB(t *testing.T) *sql.DB {
 		t.Skipf("PostgreSQL not reachable at %s: %v", dsn, err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if _, err := database.RunUp(ctx, db); err != nil {
-		t.Fatalf("apply migrations: %v", err)
+	if _, err := database.PrepareCleanAndMigrate(ctx, db, "bookdb"); err != nil {
+		t.Fatalf("prepare clean test database: %v", err)
 	}
 	return db
 }
@@ -257,8 +262,24 @@ func TestReviewProposal_UnknownReturnsNotFound(t *testing.T) {
 
 	// A real, already-reviewed proposal: conflict class.
 	other := newS4User(t, db, fmt.Sprintf("reviewer_%d", time.Now().UnixNano()), string(RoleContributor), password)
+
+	// A fresh work (inserted + cleaned up by this test) so the publication
+	// target never depends on fixture state or cross-package side effects.
+	workID := uuid.New()
+	if _, err := db.ExecContext(ctx,
+		`INSERT INTO bookdb.works (work_id, canonical_title, normalized_title) VALUES ($1, 'Review Test Work', 'review test work')`,
+		workID); err != nil {
+		t.Fatalf("insert test work: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.works WHERE work_id = $1`, workID)
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.change_feed WHERE entity_id = $1`, workID)
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.outbox WHERE aggregate_id = $1`, workID)
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.canonical_revisions WHERE entity_id = $1`, workID)
+	})
+
 	proposal, err := service.SubmitProposal(ctx, other.UserID, "work",
-		uuid.MustParse("11111111-1111-4111-8111-111111111111"),
+		workID,
 		"title", []byte(`"Stale Title"`), "typo")
 	if err != nil {
 		t.Fatalf("submit proposal: %v", err)

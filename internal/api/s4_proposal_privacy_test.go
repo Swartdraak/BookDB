@@ -79,7 +79,7 @@ func TestProposalList_Privacy(t *testing.T) {
 	strangerCookie := loginAuthCookie(t, h, stranger.Username, password)
 
 	secret := "API Privacy Probe " + itoa(stamp)
-	workID := uuid.MustParse("11111111-1111-4111-8111-111111111111")
+	workID := uuid.New()
 	submit := map[string]any{
 		"entity_type":    "work",
 		"entity_id":      workID.String(),
@@ -176,7 +176,23 @@ func TestReviewProposal_ErrorClasses(t *testing.T) {
 	adminCookie := loginAuthCookie(t, h, admin.Username, password)
 	contribCookie := loginAuthCookie(t, h, contrib.Username, password)
 
-	workID := uuid.MustParse("11111111-1111-4111-8111-111111111111")
+	// A fresh work (inserted + cleaned up by this test) so the error-class
+	// taxonomy never depends on fixture state or cross-package side effects:
+	// approval publishes to the canonical catalog, so a shared fixture work
+	// would leak an already-published (work, field) pair into this test.
+	workID := uuid.New()
+	_, err := db.ExecContext(context.Background(),
+		`INSERT INTO bookdb.works (work_id, canonical_title, normalized_title) VALUES ($1, 'ErrorClass Work', 'errorclass work')`,
+		workID)
+	if err != nil {
+		t.Fatalf("insert test work: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.works WHERE work_id = $1`, workID)
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.change_feed WHERE entity_id = $1`, workID)
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.outbox WHERE aggregate_id = $1`, workID)
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.canonical_revisions WHERE entity_id = $1`, workID)
+	})
 	unknownID := uuid.MustParse("99999999-9999-4999-8999-999999999999")
 
 	doReview := func(cookie *http.Cookie, proposalID string, approve bool) *httptest.ResponseRecorder {
