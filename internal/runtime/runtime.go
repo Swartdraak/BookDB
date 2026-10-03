@@ -63,6 +63,8 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return runFixtures(args[1:], stdout, stderr)
 	case "ingest":
 		return runIngest(ctx, args[1:], stdout, stderr)
+	case "reconcile":
+		return runReconcile(ctx, args[1:], stdout, stderr)
 	case "api":
 		return runService(ctx, "api", stdout, stderr)
 	case "scheduler":
@@ -86,6 +88,8 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  migrate")
 	fmt.Fprintln(w, "  doctor")
 	fmt.Fprintln(w, "  version")
+	fmt.Fprintln(w, "  ingest  <S2 Open Library snapshot ingest + promotion>")
+	fmt.Fprintln(w, "  reconcile  <S3 enrichment + cross-source duplicate candidates>")
 }
 
 func runVersion(stdout io.Writer) int {
