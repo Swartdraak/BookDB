@@ -17,6 +17,8 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/bookdb/bookdb/internal/reconciliation"
 )
 
 // Role is a user's access level.
@@ -264,11 +266,33 @@ func (a *AuthService) SubmitProposal(ctx context.Context, userID uuid.UUID, enti
 	return &p, nil
 }
 
-// ReviewProposal approves or rejects a proposal.
+// ReviewProposal approves or rejects a proposal. On approval it performs
+// atomic publication: the canonical catalog entity is updated, the canonical
+// revision is bumped, a change-feed event and a search-projection outbox event
+// are appended, and an admin-override canonical field selection is recorded —
+// all in one PostgreSQL transaction (BDB-011: one published revision/event
+// and a visible approved change; no partial publication). On rejection the
+// proposal status is set and an audit event is written; the public record is
+// left unchanged.
 func (a *AuthService) ReviewProposal(ctx context.Context, proposalID uuid.UUID, reviewerID uuid.UUID, approve bool, note string) error {
 	status := "rejected"
 	if approve {
 		status = "approved"
+	}
+
+	// Pre-fetch the proposal so publication can use its fields. The pending
+	// guard below re-checks inside the transaction, so a concurrent review
+	// still wins with a 409 conflict.
+	var p Proposal
+	err := a.db.QueryRowContext(ctx, `
+		SELECT proposal_id, user_id, entity_type, entity_id, field_name, proposed_value, rationale, status, revision, created_at
+		FROM bookdb.correction_proposals WHERE proposal_id = $1`, proposalID).
+		Scan(&p.ProposalID, &p.UserID, &p.EntityType, &p.EntityID, &p.FieldName, &p.ProposedValue, &p.Rationale, &p.Status, &p.Revision, &p.CreatedAt)
+	if err == sql.ErrNoRows {
+		return ErrProposalNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("auth: fetch proposal: %w", err)
 	}
 
 	tx, err := a.db.BeginTx(ctx, nil)
@@ -317,7 +341,151 @@ func (a *AuthService) ReviewProposal(ctx context.Context, proposalID uuid.UUID, 
 		return fmt.Errorf("auth: audit: %w", err)
 	}
 
+	// Atomic publication on approval: update the canonical entity, bump the
+	// canonical revision, append the change-feed event, write the search
+	// outbox event, and record the admin-override field selection. All in
+	// this transaction, so a failure anywhere rolls back the whole review
+	// (no partial publication).
+	if approve {
+		if err := a.publishProposal(ctx, tx, &p, reviewerID); err != nil {
+			return fmt.Errorf("auth: publish proposal: %w", err)
+		}
+	}
+
 	return tx.Commit()
+}
+
+// publishProposal applies an approved proposal to the canonical catalog
+// inside the caller's transaction. It updates the targeted field on the
+// entity, bumps the canonical revision, appends a change-feed event, writes a
+// search-projection outbox event, and records an admin-override canonical
+// field selection. A missing entity is a 404-class failure: the transaction
+// rolls back and the proposal stays pending, so the public record is never
+// touched.
+func (a *AuthService) publishProposal(ctx context.Context, tx *sql.Tx, p *Proposal, reviewerID uuid.UUID) error {
+	value := strings.Trim(string(p.ProposedValue), `"`)
+
+	var revision int64
+	switch p.EntityType {
+	case "work":
+		var exists int
+		if err := tx.QueryRowContext(ctx,
+			`SELECT count(*) FROM bookdb.works WHERE work_id = $1`, p.EntityID).Scan(&exists); err != nil {
+			return fmt.Errorf("publish: check work: %w", err)
+		}
+		if exists == 0 {
+			return ErrProposalNotFound
+		}
+		res, err := tx.ExecContext(ctx, `
+			UPDATE bookdb.works
+			SET canonical_title = $2, normalized_title = $3, updated_at = now()
+			WHERE work_id = $1`,
+			p.EntityID, value, reconciliation.NormalizeTitle(value))
+		if err != nil {
+			return fmt.Errorf("publish: update work: %w", err)
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrProposalNotFound
+		}
+		newRev, err := bumpCanonicalRevision(ctx, tx, "work", p.EntityID)
+		if err != nil {
+			return err
+		}
+		revision = newRev
+	case "person":
+		var exists int
+		if err := tx.QueryRowContext(ctx,
+			`SELECT count(*) FROM bookdb.people WHERE person_id = $1`, p.EntityID).Scan(&exists); err != nil {
+			return fmt.Errorf("publish: check person: %w", err)
+		}
+		if exists == 0 {
+			return ErrProposalNotFound
+		}
+		res, err := tx.ExecContext(ctx, `
+			UPDATE bookdb.people
+			SET display_name = $2, updated_at = now()
+			WHERE person_id = $1`,
+			p.EntityID, value)
+		if err != nil {
+			return fmt.Errorf("publish: update person: %w", err)
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrProposalNotFound
+		}
+		newRev, err := bumpCanonicalRevision(ctx, tx, "person", p.EntityID)
+		if err != nil {
+			return err
+		}
+		revision = newRev
+	default:
+		// entity_type is free text (no CHECK constraint); publishing is
+		// restricted to work/person for now. The review still commits with
+		// the proposal marked approved, so the correction is not lost — it
+		// simply has no canonical publication side effect yet.
+		return nil
+	}
+
+	// Change feed: one durable, ordered event for this publication.
+	payload, _ := json.Marshal(map[string]any{
+		"proposal_id": p.ProposalID.String(),
+		"field":       p.FieldName,
+		"value":       value,
+		"reviewed_by": reviewerID.String(),
+	})
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO bookdb.change_feed (entity_type, entity_id, change_type, payload, revision)
+		VALUES ($1, $2, 'updated', $3, $4)`,
+		p.EntityType, p.EntityID, payload, revision); err != nil {
+		return fmt.Errorf("publish: change feed: %w", err)
+	}
+
+	// Search-projection outbox: the indexer picks this up and updates the
+	// public search index (only on approval — pending proposals never
+	// reach the index).
+	outboxPayload, _ := json.Marshal(map[string]any{
+		"entity_type":   p.EntityType,
+		"field":         p.FieldName,
+		"value":         value,
+		"proposal_id":   p.ProposalID.String(),
+		"canonical_rev": revision,
+	})
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO bookdb.outbox (aggregate_type, aggregate_id, event_type, payload)
+		VALUES ($1, $2, $3, $4)`,
+		p.EntityType, p.EntityID, p.EntityType+".published", outboxPayload); err != nil {
+		return fmt.Errorf("publish: outbox: %w", err)
+	}
+
+	// Admin-override canonical field selection: traceable provenance that an
+	// administrator approved this value.
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO bookdb.canonical_field_selections
+			(target_type, target_id, field, selected_value, reason, algorithm_version, admin_override)
+		VALUES ($1, $2, $3, $4, $5, 'admin-approval', true)
+		ON CONFLICT DO NOTHING`,
+		p.EntityType, p.EntityID, p.FieldName, p.ProposedValue,
+		fmt.Sprintf("approved proposal %s by admin %s", p.ProposalID, reviewerID)); err != nil {
+		return fmt.Errorf("publish: field selection: %w", err)
+	}
+
+	return nil
+}
+
+// bumpCanonicalRevision increments (or creates) the canonical revision for an
+// entity and returns the new value.
+func bumpCanonicalRevision(ctx context.Context, tx *sql.Tx, entityType string, entityID uuid.UUID) (int64, error) {
+	var revision int64
+	err := tx.QueryRowContext(ctx, `
+		INSERT INTO bookdb.canonical_revisions (entity_type, entity_id, revision)
+		VALUES ($1, $2, 1)
+		ON CONFLICT (entity_type, entity_id)
+		DO UPDATE SET revision = bookdb.canonical_revisions.revision + 1, updated_at = now()
+		RETURNING revision`,
+		entityType, entityID).Scan(&revision)
+	if err != nil {
+		return 0, fmt.Errorf("auth: bump revision: %w", err)
+	}
+	return revision, nil
 }
 
 // ListProposals returns proposals filtered by status.

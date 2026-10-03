@@ -257,8 +257,25 @@ func TestReviewProposal_UnknownReturnsNotFound(t *testing.T) {
 
 	// A real, already-reviewed proposal: conflict class.
 	other := newS4User(t, db, fmt.Sprintf("reviewer_%d", time.Now().UnixNano()), string(RoleContributor), password)
+
+	// Insert the target work so the atomic publication has a valid entity
+	// (BDB-011: approval publishes to the canonical catalog; the work must
+	// exist for the first review to succeed).
+	workID := uuid.MustParse("11111111-1111-4111-8111-111111111111")
+	if _, err := db.ExecContext(ctx,
+		`INSERT INTO bookdb.works (work_id, canonical_title, normalized_title) VALUES ($1, 'Review Test Work', 'review test work') ON CONFLICT DO NOTHING`,
+		workID); err != nil {
+		t.Fatalf("insert test work: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.works WHERE work_id = $1`, workID)
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.change_feed WHERE entity_id = $1`, workID)
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.outbox WHERE aggregate_id = $1`, workID)
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM bookdb.canonical_revisions WHERE entity_id = $1`, workID)
+	})
+
 	proposal, err := service.SubmitProposal(ctx, other.UserID, "work",
-		uuid.MustParse("11111111-1111-4111-8111-111111111111"),
+		workID,
 		"title", []byte(`"Stale Title"`), "typo")
 	if err != nil {
 		t.Fatalf("submit proposal: %v", err)
