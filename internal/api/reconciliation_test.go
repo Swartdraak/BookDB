@@ -115,7 +115,14 @@ func TestReconciliation_PermissionBoundaries(t *testing.T) {
 
 	workID := insertReconWork(t, db, "Recon Boundary Work")
 
-	mergeBody := `{"entity_type":"work","id_a":"` + workID.String() + `","id_b":"` + uuid.New().String() + `","reason":"boundary-test"}`
+	// The merge subtest merges workID into a SECOND real work row, never a
+	// bare UUID. Merge() makes the lower UUID canonical, so with a bare
+	// uuid.New() target the canonical side would be dangling ~50% of runs
+	// (no works row), and the resolve-read proof below would fail on the
+	// dangling redirect. With two real rows the canonical target always
+	// exists in the catalog.
+	mergeTargetID := insertReconWork(t, db, "Recon Boundary Merge Target")
+	mergeBody := `{"entity_type":"work","id_a":"` + workID.String() + `","id_b":"` + mergeTargetID.String() + `","reason":"boundary-test"}`
 	// Split targets a FRESH work row so its optimistic-concurrency check
 	// (expected_revision) is not disturbed by the merge subtest's revision
 	// bump on the merge row.
@@ -203,9 +210,11 @@ func TestReconciliation_PermissionBoundaries(t *testing.T) {
 	}
 
 	// Resolve read proves the handler actually ran (not a masked 4xx): the
-	// response must carry the requested work ID. The canonical target must
-	// resolve to a real work (or the requested ID itself) in the catalog —
-	// a dangling redirect target would be a data-integrity error, not a
+	// response must carry the requested work ID. After the merge subtest,
+	// workID's canonical target is the LOWER of workID and mergeTargetID —
+	// a real, catalog-inserted work row (never a bare UUID) — so the
+	// canonical must resolve to a real work (or the requested ID itself).
+	// A dangling redirect target would be a data-integrity error, not a
 	// handler success.
 	rec := doReconRequest(t, h, issued.Secret, http.MethodGet, "/api/v1/reconciliation/resolve/work/"+workID.String(), "", nil)
 	if rec.Code != http.StatusOK {
