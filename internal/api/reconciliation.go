@@ -1,3 +1,23 @@
+// Package note: the S3 reconciliation namespace (issue #60).
+//
+// Permission boundaries (docs/bookdb/05-api-security.md: merge/split are
+// administrator actions; every /api/v1 route requires a valid key):
+//
+//   - POST /api/v1/reconciliation/merge            — administrator
+//   - POST /api/v1/reconciliation/split            — administrator
+//   - POST /api/v1/reconciliation/reconcile        — administrator
+//   - POST /api/v1/reconciliation/duplicates/generate — administrator
+//   - GET  /api/v1/reconciliation/resolve/{type}/{id} — API-key auth (read)
+//   - GET  /api/v1/reconciliation/changes          — API-key auth (read)
+//   - GET  /api/v1/reconciliation/duplicates/{type} — API-key auth (read)
+//
+// Enforcement order, mapped before any resource lookup so non-authorized
+// callers cannot probe entity IDs (mirrors the S4 job-admin boundary,
+// TestJobAdmin_PermissionBoundaries):
+//
+//  1. 401 missing/invalid/revoked/expired API key (X-API-Key, S1 key store)
+//  2. 403 valid key without the reconciliation scope
+//  3. 403 administrator-only mutation without an administrator session
 package api
 
 import (
@@ -6,35 +26,106 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/bookdb/bookdb/internal/apikey"
+	"github.com/bookdb/bookdb/internal/auth"
 	"github.com/bookdb/bookdb/internal/reconciliation"
 	"github.com/google/uuid"
 )
 
+// ScopeReconciliation is the API-key scope required for the S3 reconciliation
+// namespace. Ordinary catalog keys (catalog:read) do not carry it, so the
+// reconciliation surface stays closed to plain integration keys.
+const ScopeReconciliation = "reconciliation:*"
+
 // ReconciliationServer provides S3 reconciliation API endpoints.
 type ReconciliationServer struct {
-	reconciler *reconciliation.Reconciler
-	client     *reconciliation.EnrichmentClient
+	reconciler  *reconciliation.Reconciler
+	client      *reconciliation.EnrichmentClient
+	keys        *apikey.Store
+	authService *auth.AuthService
 }
 
-// NewReconciliationServer creates a ReconciliationServer.
-func NewReconciliationServer(db *sql.DB) *ReconciliationServer {
+// NewReconciliationServer creates a ReconciliationServer. macKey is the API-key
+// MAC key shared with the S1 catalog server (internal/apikey).
+func NewReconciliationServer(db *sql.DB, macKey []byte) *ReconciliationServer {
 	return &ReconciliationServer{
-		reconciler: reconciliation.NewReconciler(db),
-		client:     reconciliation.NewEnrichmentClient(reconciliation.EnrichmentConfig{}),
+		reconciler:  reconciliation.NewReconciler(db),
+		client:      reconciliation.NewEnrichmentClient(reconciliation.EnrichmentConfig{}),
+		keys:        apikey.NewStore(db, macKey),
+		authService: auth.NewAuthService(db),
 	}
 }
 
 // Handler returns the HTTP handler for the /api/v1/reconciliation namespace.
 func (s *ReconciliationServer) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/v1/reconciliation/merge", s.handleMerge)
-	mux.HandleFunc("POST /api/v1/reconciliation/split", s.handleSplit)
-	mux.HandleFunc("GET /api/v1/reconciliation/resolve/{type}/{id}", s.handleResolve)
-	mux.HandleFunc("GET /api/v1/reconciliation/changes", s.handleChanges)
-	mux.HandleFunc("GET /api/v1/reconciliation/duplicates/{type}", s.handleDuplicates)
-	mux.HandleFunc("POST /api/v1/reconciliation/duplicates/generate", s.handleDuplicatesGenerate)
-	mux.HandleFunc("POST /api/v1/reconciliation/reconcile", s.handleReconcile)
+	mux.HandleFunc("POST /api/v1/reconciliation/merge", s.requireReconAuth(true, s.handleMerge))
+	mux.HandleFunc("POST /api/v1/reconciliation/split", s.requireReconAuth(true, s.handleSplit))
+	mux.HandleFunc("GET /api/v1/reconciliation/resolve/{type}/{id}", s.requireReconAuth(false, s.handleResolve))
+	mux.HandleFunc("GET /api/v1/reconciliation/changes", s.requireReconAuth(false, s.handleChanges))
+	mux.HandleFunc("GET /api/v1/reconciliation/duplicates/{type}", s.requireReconAuth(false, s.handleDuplicates))
+	mux.HandleFunc("POST /api/v1/reconciliation/duplicates/generate", s.requireReconAuth(true, s.handleDuplicatesGenerate))
+	mux.HandleFunc("POST /api/v1/reconciliation/reconcile", s.requireReconAuth(true, s.handleReconcile))
 	return mux
+}
+
+// requireReconAuth enforces the reconciliation permission boundary before the
+// wrapped handler runs:
+//
+//  1. A valid API key (X-API-Key) is always required — missing or
+//     missing/invalid/revoked/expired is 401. The client API key namespace
+//     deliberately has no browser-session fallback: administrator actions
+//     stay separate from an embedded administrator API key
+//     (05-api-security.md).
+//  2. The key must carry the reconciliation scope — a valid key without it is
+//     403 (insufficient scope, S1 model).
+//  3. For mutation operations (adminOnly) the authenticated user session must
+//     carry the administrator role — a valid non-administrator is 403. Reads
+//     (adminOnly=false) stop at API-key auth, the documented floor for the
+//     read surface.
+//
+// All checks run before any resource lookup, so an unauthorized caller cannot
+// probe entity IDs through handler-level 400/404 responses.
+func (s *ReconciliationServer) requireReconAuth(adminOnly bool, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		secret := r.Header.Get("X-API-Key")
+		if secret == "" {
+			writeError(w, http.StatusUnauthorized, "missing_api_key", "A valid API key is required.")
+			return
+		}
+		key, err := s.keys.Verify(r.Context(), secret)
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "invalid_api_key", "The API key is missing, invalid, revoked, or expired.")
+			return
+		}
+		if !hasScope(key.Scopes, ScopeReconciliation) {
+			writeError(w, http.StatusForbidden, "insufficient_scope", "The API key lacks the reconciliation scope.")
+			return
+		}
+		if adminOnly {
+			sessionIDStr := r.Header.Get("X-Session-ID")
+			if sessionIDStr == "" {
+				if cookie, cerr := r.Cookie("bookdb_session"); cerr == nil {
+					sessionIDStr = cookie.Value
+				}
+			}
+			if sessionIDStr == "" {
+				writeError(w, http.StatusForbidden, "insufficient_role", "Administrator role required.")
+				return
+			}
+			sessionID, perr := uuid.Parse(sessionIDStr)
+			if perr != nil {
+				writeError(w, http.StatusForbidden, "insufficient_role", "Administrator role required.")
+				return
+			}
+			user, _, verr := s.authService.ValidateSession(r.Context(), sessionID)
+			if verr != nil || !auth.HasRole(user.Role, auth.RoleAdministrator) {
+				writeError(w, http.StatusForbidden, "insufficient_role", "Administrator role required.")
+				return
+			}
+		}
+		next(w, r)
+	}
 }
 
 type mergeRequest struct {
